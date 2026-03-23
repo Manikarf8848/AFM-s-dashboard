@@ -684,7 +684,7 @@ if _all_parts or uploaded_files:
     if optional_cols["Shift"]:          tab_names.append("By Shift")
     if optional_cols["Blocking"]:       tab_names.append("Blocking Analysis")
     if optional_cols["Equipment ID"]:   tab_names.append("Equipment ID Analysis")
-    tab_names += ["Hourly Trend", "Heatmap", "Raw Data", "📤 Export"]
+    tab_names += ["Hourly Trend", "Heatmap", "Raw Data", "📤 Export", "📂 History"]
 
     tabs = st.tabs(tab_names)
     tab = {n: t for n, t in zip(tab_names, tabs)}
@@ -1686,6 +1686,109 @@ if _all_parts or uploaded_files:
                                use_container_width=True)
 
         st.info("💡 Reports reflect your current filter selections. Adjust filters on any tab, then download.")
+
+    # ── Tab: History ──────────────────────────────────────────────────────────
+    with tab["📂 History"]:
+        st.markdown('<div class="sec-title">Upload History</div>', unsafe_allow_html=True)
+        hist_records = history_db.get_history(50)
+        if not hist_records:
+            st.info("No upload history yet. Upload a file to start building your history.")
+        else:
+            # ── Summary table of all saved records ───────────────────────────
+            summary_rows = []
+            for r in hist_records:
+                summary_rows.append({
+                    "File Name":    r["file_name"],
+                    "Upload Date":  r.get("upload_date", r["upload_ts"][:10] if r["upload_ts"] else ""),
+                    "Week(s)":      ", ".join([f"Wk {w}" for w in r["week_numbers"]]) or "—",
+                    "Andons":       r["total_andons"],
+                    "Date Range":   f"{r['date_min']} → {r['date_max']}",
+                    "Daily Data":   "✅" if r.get("has_daily") else "—",
+                    "Weekly Data":  "✅" if r.get("has_weekly") else "—",
+                })
+            st.markdown("#### All Saved Datasets")
+            st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # ── Per-dataset detail ────────────────────────────────────────────
+            fname_options = [r["file_name"] for r in hist_records]
+            sel_hist = st.selectbox("Inspect dataset", fname_options, key="hist_sel")
+            sel_rec  = next(r for r in hist_records if r["file_name"] == sel_hist)
+            sel_hash = sel_rec["file_hash"]
+
+            h_daily, h_weekly, h_proc = st.tabs(["📅 Daily", "📆 Weekly", "🗂 Processed"])
+
+            with h_daily:
+                daily_df = history_db.load_daily(sel_hash)
+                if daily_df is not None and not daily_df.empty:
+                    st.markdown(
+                        f"**{len(daily_df)} day(s)** of data for **{sel_hist}** "
+                        f"(uploaded {sel_rec.get('upload_date', '')})"
+                    )
+                    fmt = {}
+                    if "Avg_Resolve_Min" in daily_df.columns:
+                        fmt["Avg_Resolve_Min"] = "{:.2f}"
+                    st.dataframe(
+                        daily_df.style.format(fmt),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    csv_d = daily_df.to_csv(index=False).encode()
+                    st.download_button(
+                        "⬇️ Download daily CSV",
+                        csv_d,
+                        f"{sel_hist}_daily.csv",
+                        "text/csv",
+                        use_container_width=True,
+                    )
+                else:
+                    st.info("No daily breakdown available for this file.")
+
+            with h_weekly:
+                weekly_df = history_db.load_weekly(sel_hash)
+                if weekly_df is not None and not weekly_df.empty:
+                    st.markdown(
+                        f"**{len(weekly_df)} week(s)** of data for **{sel_hist}** "
+                        f"(uploaded {sel_rec.get('upload_date', '')})"
+                    )
+                    fmt = {}
+                    if "Avg_Resolve_Min" in weekly_df.columns:
+                        fmt["Avg_Resolve_Min"] = "{:.2f}"
+                    st.dataframe(
+                        weekly_df.style.format(fmt),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    csv_w = weekly_df.to_csv(index=False).encode()
+                    st.download_button(
+                        "⬇️ Download weekly CSV",
+                        csv_w,
+                        f"{sel_hist}_weekly.csv",
+                        "text/csv",
+                        use_container_width=True,
+                    )
+                else:
+                    st.info("No weekly breakdown available for this file.")
+
+            with h_proc:
+                proc_df = history_db.load_dataframe(sel_hash)
+                if proc_df is not None and not proc_df.empty:
+                    st.markdown(
+                        f"**{len(proc_df):,} rows** · **{proc_df.shape[1]} columns** — "
+                        f"full extracted dataset for **{sel_hist}**"
+                    )
+                    st.dataframe(proc_df, use_container_width=True, hide_index=True)
+                    csv_p = proc_df.to_csv(index=False).encode()
+                    st.download_button(
+                        "⬇️ Download processed CSV",
+                        csv_p,
+                        f"{sel_hist}_processed.csv",
+                        "text/csv",
+                        use_container_width=True,
+                    )
+                else:
+                    st.info("No processed data available for this file.")
 
 else:
     st.markdown(f"""
