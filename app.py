@@ -43,13 +43,11 @@ st.markdown(f"""
 }}
 [data-testid="stSidebar"] * {{ color: {_text} !important; }}
 
-/* ── Scrollbar ── */
 ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
 ::-webkit-scrollbar-track {{ background: {_bg2}; }}
 ::-webkit-scrollbar-thumb {{ background: {_accent}; border-radius: 10px; }}
 ::-webkit-scrollbar-thumb:hover {{ background: #5c6bc0; }}
 
-/* ── Header ── */
 .dash-header {{
     background: {"linear-gradient(135deg, #0d1333 0%, #1a237e 45%, #3949ab 100%)" if DM else "linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)"};
     padding: 1.2rem 2rem; border-radius: 16px; margin-bottom: 1rem;
@@ -71,13 +69,11 @@ st.markdown(f"""
 .dash-header h1 {{ margin: 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; }}
 .dash-header p  {{ margin: 0.2rem 0 0 0; opacity: 0.75; font-size: 0.82rem; }}
 
-/* ── KPI Cards ── */
 .kpi-box {{
     background: {_card}; border-radius: 14px; padding: 1.1rem 1.2rem;
     box-shadow: {"0 2px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(57,73,171,0.12)" if DM else "0 2px 16px rgba(0,0,0,0.08)"};
     text-align: center; border-top: 3px solid {_border};
-    transition: transform 0.25s cubic-bezier(0.22,1,0.36,1),
-                box-shadow 0.25s cubic-bezier(0.22,1,0.36,1);
+    transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s cubic-bezier(0.22,1,0.36,1);
     animation: fadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both;
     cursor: default;
 }}
@@ -93,14 +89,12 @@ st.markdown(f"""
 .kpi-value {{ font-size: 2rem; font-weight: 900; color: {_text}; line-height: 1.1; letter-spacing: -0.02em; }}
 .kpi-sub   {{ font-size: 0.7rem; color: {_sub}; margin-top: 0.25rem; }}
 
-/* ── Section titles ── */
 .sec-title {{
     font-size: 0.95rem; font-weight: 700; color: {_text};
     padding: 0.45rem 0; border-bottom: 2px solid {_accent};
     margin-bottom: 0.75rem; letter-spacing: -0.01em;
 }}
 
-/* ── Profile card ── */
 .profile-card {{
     background: {_card}; border-radius: 16px; padding: 1.3rem 1.6rem;
     border-left: 5px solid {_accent};
@@ -114,7 +108,6 @@ st.markdown(f"""
 .profile-name {{ font-size: 1.5rem; font-weight: 800; color: {_text}; }}
 .profile-sub  {{ font-size: 0.82rem; color: {_sub}; }}
 
-/* ── Badges ── */
 .badge {{
     display: inline-block; padding: 3px 11px; border-radius: 20px;
     font-size: 0.71rem; font-weight: 700; margin: 2px 3px;
@@ -126,7 +119,6 @@ st.markdown(f"""
 .badge-green  {{ background: rgba(76,175,80,0.15);  color: #4caf50; border: 1px solid rgba(76,175,80,0.4); }}
 .badge-blue   {{ background: rgba(121,134,203,0.15); color: {_accent}; border: 1px solid rgba(121,134,203,0.4); }}
 
-/* ── Tabs ── */
 div[data-testid="stTabs"] button {{
     font-weight: 600; font-size: 0.83rem;
     color: {_sub} !important;
@@ -143,10 +135,8 @@ div[data-testid="stTabs"] button[aria-selected="true"] {{
     background: {"rgba(57,73,171,0.12)" if DM else "rgba(57,73,171,0.07)"} !important;
 }}
 
-/* ── Data frame ── */
 [data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; }}
 
-/* ── Inputs ── */
 [data-testid="stTextInput"] input, [data-testid="stSelectbox"] select {{
     background: {_bg2} !important; color: {_text} !important;
     border-color: {"#3949ab" if DM else "#c5cae9"} !important;
@@ -159,10 +149,8 @@ div[data-testid="stTabs"] button[aria-selected="true"] {{
 
 p, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {_text}; }}
 
-/* ── RC Banner ── */
 .rc-banner {{
-    background: linear-gradient(135deg, {"#1e2235" if DM else "#fff3e0"} 0%,
-                                        {"#22263a" if DM else "#fff8e1"} 100%);
+    background: linear-gradient(135deg, {"#1e2235" if DM else "#fff3e0"} 0%, {"#22263a" if DM else "#fff8e1"} 100%);
     border-left: 5px solid #f59e0b; border-radius: 12px;
     padding: 1rem 1.4rem; margin-bottom: 1rem;
     animation: fadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
@@ -171,7 +159,6 @@ p, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {_text}; }}
 .rc-issue {{ font-size: 1.05rem; font-weight: 700; color: #f59e0b; }}
 .rc-sub   {{ font-size: 0.82rem; color: {_sub}; margin-top: 4px; }}
 
-/* ── Leaderboard top performer row ── */
 .top-performer-card {{
     background: {"linear-gradient(135deg, #1e2235, #252847)" if DM else "linear-gradient(135deg, #fffde7, #fff8e1)"};
     border: {"2px solid rgba(245,158,11,0.4)" if DM else "2px solid rgba(245,158,11,0.5)"};
@@ -185,7 +172,6 @@ p, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {_text}; }}
     box-shadow: {"0 8px 32px rgba(245,158,11,0.25)" if DM else "0 8px 24px rgba(245,158,11,0.3)"};
 }}
 
-/* ── Overview chart cards ── */
 .chart-card {{
     background: {_card};
     border-radius: 14px; padding: 0.5rem;
@@ -198,7 +184,6 @@ p, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {_text}; }}
     box-shadow: {"0 8px 32px rgba(57,73,171,0.35), 0 0 0 1px rgba(121,134,203,0.2)" if DM else "0 6px 24px rgba(57,73,171,0.18)"};
 }}
 
-/* ── Slow flag ── */
 .slow-flag {{
     display: inline-block; padding: 3px 9px;
     background: rgba(239,83,80,0.15); color: #ef5350;
@@ -218,7 +203,6 @@ p, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {_text}; }}
     font-size: 0.7rem; font-weight: 700;
 }}
 
-/* ── Buttons ── */
 .stButton > button {{
     background: {"linear-gradient(135deg, #1a237e, #3949ab)" if DM else "linear-gradient(135deg, #3949ab, #5c6bc0)"} !important;
     color: white !important; border: none !important;
@@ -232,7 +216,6 @@ p, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {_text}; }}
     box-shadow: 0 4px 18px rgba(57,73,171,0.5) !important;
 }}
 
-/* ── File uploader ── */
 [data-testid="stFileUploader"] {{
     background: {"rgba(30,34,53,0.7)" if DM else "rgba(240,244,255,0.8)"} !important;
     border-radius: 12px !important;
@@ -486,6 +469,110 @@ def hbar_chart(df, col, title):
     return fig
 
 
+# ── PDF helper (per-tab download) ────────────────────────────────────────────
+def make_tab_pdf(title, fdf, within_threshold):
+    """Build a quick single-tab PDF using reportlab if available, else fpdf2."""
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=30, rightMargin=30, topMargin=30, bottomMargin=30)
+        styles = getSampleStyleSheet()
+        story = []
+        story.append(Paragraph(f"LCY3 AFM Dashboard — {title}", styles["Title"]))
+        story.append(Spacer(1, 12))
+
+        # KPI summary
+        total = len(fdf)
+        avg_t = fdf["Resolve_Min"].mean()
+        med_t = fdf["Resolve_Min"].median()
+        within_pct = fdf.apply(within_threshold, axis=1).mean() * 100
+        kpi_data = [
+            ["Metric", "Value"],
+            ["Total Andons", f"{total:,}"],
+            ["Avg Resolve Time", f"{avg_t:.2f} min"],
+            ["Median Resolve Time", f"{med_t:.2f} min"],
+            ["% Within Threshold", f"{within_pct:.1f}%"],
+        ]
+        t = Table(kpi_data, colWidths=[200, 200])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#3949ab")),
+            ("TEXTCOLOR",  (0,0), (-1,0), colors.white),
+            ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.HexColor("#f5f5f5"), colors.white]),
+            ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#c5cae9")),
+            ("FONTSIZE", (0,0), (-1,-1), 10),
+            ("PADDING", (0,0), (-1,-1), 6),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 16))
+
+        # Leaderboard table
+        lb = (fdf.groupby("Resolver")
+              .agg(Total=("Resolve_Min","count"), Avg=("Resolve_Min","mean"))
+              .reset_index().sort_values("Avg").head(20))
+        lb["Avg"] = lb["Avg"].round(2)
+        lb_data = [["Rank","Resolver","Total Andons","Avg Time (min)"]]
+        for i, row in enumerate(lb.itertuples(), 1):
+            lb_data.append([str(i), row.Resolver, str(row.Total), f"{row.Avg:.2f}"])
+        lt = Table(lb_data, colWidths=[40, 220, 100, 100])
+        lt.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#1a237e")),
+            ("TEXTCOLOR",  (0,0), (-1,0), colors.white),
+            ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.HexColor("#f5f5f5"), colors.white]),
+            ("GRID", (0,0), (-1,-1), 0.4, colors.HexColor("#c5cae9")),
+            ("FONTSIZE", (0,0), (-1,-1), 9),
+            ("PADDING", (0,0), (-1,-1), 5),
+        ]))
+        story.append(Paragraph("Leaderboard (Top 20)", styles["Heading2"]))
+        story.append(Spacer(1, 6))
+        story.append(lt)
+        doc.build(story)
+        buf.seek(0)
+        return buf.getvalue()
+    except ImportError:
+        pass
+
+    try:
+        from fpdf import FPDF
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 16)
+        pdf.cell(0, 10, f"LCY3 AFM Dashboard — {title}", ln=True, align="C")
+        pdf.ln(4)
+        pdf.set_font("Helvetica", size=11)
+        total = len(fdf)
+        avg_t = fdf["Resolve_Min"].mean()
+        med_t = fdf["Resolve_Min"].median()
+        within_pct = fdf.apply(within_threshold, axis=1).mean() * 100
+        for label, val in [
+            ("Total Andons", f"{total:,}"),
+            ("Avg Resolve Time", f"{avg_t:.2f} min"),
+            ("Median Resolve Time", f"{med_t:.2f} min"),
+            ("% Within Threshold", f"{within_pct:.1f}%"),
+        ]:
+            pdf.cell(90, 8, label, border=1)
+            pdf.cell(90, 8, val, border=1, ln=True)
+        pdf.ln(6)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(0, 8, "Leaderboard (Top 20)", ln=True)
+        pdf.set_font("Helvetica", size=9)
+        lb = (fdf.groupby("Resolver")
+              .agg(Total=("Resolve_Min","count"), Avg=("Resolve_Min","mean"))
+              .reset_index().sort_values("Avg").head(20))
+        for i, row in enumerate(lb.itertuples(), 1):
+            pdf.cell(10, 7, str(i), border=1)
+            pdf.cell(90, 7, str(row.Resolver)[:40], border=1)
+            pdf.cell(30, 7, str(row.Total), border=1)
+            pdf.cell(30, 7, f"{row.Avg:.2f}", border=1, ln=True)
+        return pdf.output(dest="S").encode("latin-1")
+    except ImportError:
+        return None
+
+
 _parts_new = []
 _dup_warnings = []
 _new_file_names = []
@@ -524,9 +611,11 @@ if uploaded_files:
         raw_for_preprocess["Resolve_Min"] = pd.to_timedelta(
             raw_for_preprocess["Dwell Time (hh:mm:ss)"], errors="coerce"
         ).dt.total_seconds() / 60
+        # ── FIX: coerce Time Created, drop NaT before isocalendar ──
         raw_for_preprocess["Time Created"] = pd.to_datetime(
             raw_for_preprocess["Time Created"], errors="coerce"
         )
+        raw_for_preprocess = raw_for_preprocess.dropna(subset=["Time Created"])
         raw_for_preprocess["Week"] = raw_for_preprocess["Time Created"].dt.isocalendar().week.astype(int)
         try:
             history_db.record_upload(uf.name, raw_for_preprocess, file_hash)
@@ -689,8 +778,24 @@ if _all_parts or uploaded_files:
     tabs = st.tabs(tab_names)
     tab = {n: t for n, t in zip(tab_names, tabs)}
 
+    # ── Reusable PDF download button for any tab ───────────────────────────
+    def tab_pdf_download(tab_label, df_for_pdf):
+        """Render a PDF download button at the top of a tab."""
+        pdf_bytes = make_tab_pdf(tab_label, df_for_pdf, within_threshold)
+        if pdf_bytes:
+            st.download_button(
+                label="⬇️ Download this view as PDF",
+                data=pdf_bytes,
+                file_name=f"LCY3_{tab_label.replace(' ','_')}.pdf",
+                mime="application/pdf",
+                key=f"pdf_{tab_label}",
+            )
+        else:
+            st.info("💡 Install `reportlab` or `fpdf2` on your Streamlit Cloud to enable PDF downloads.")
+
     # ── Tab: Overview ─────────────────────────────────────────────────────────
     with tab["📊 Overview"]:
+        tab_pdf_download("Overview", fdf)
         st.markdown('<div class="sec-title">Dashboard Overview — Key Insights at a Glance</div>', unsafe_allow_html=True)
 
         ov1, ov2 = st.columns(2)
@@ -770,8 +875,7 @@ if _all_parts or uploaded_files:
             mode="lines+markers",
             name="Daily Andons",
             line=dict(color="#7986cb", width=2.5, shape="spline", smoothing=0.8),
-            marker=dict(size=7, color="#7986cb",
-                        line=dict(width=2, color=_bg)),
+            marker=dict(size=7, color="#7986cb", line=dict(width=2, color=_bg)),
             fill="tozeroy",
             fillcolor="rgba(121,134,203,0.15)" if DM else "rgba(57,73,171,0.08)",
             hovertemplate="<b>%{x}</b><br>Andons: %{y:,}<extra></extra>"
@@ -796,8 +900,7 @@ if _all_parts or uploaded_files:
                         showgrid=False, color="#ffa726"),
             margin=dict(t=20, b=40, l=0, r=60),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                        font=dict(size=10, color=_text)),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=10, color=_text)),
             font=dict(color=_text),
             xaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
             yaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
@@ -833,6 +936,7 @@ if _all_parts or uploaded_files:
 
     # ── Tab: Leaderboard ──────────────────────────────────────────────────────
     with tab["🏆 Leaderboard"]:
+        tab_pdf_download("Leaderboard", fdf)
         lb = (fdf.groupby("Resolver")
               .agg(Total_Andons=("Resolve_Min", "count"), Avg_Time=("Resolve_Min", "mean"))
               .reset_index())
@@ -924,6 +1028,7 @@ if _all_parts or uploaded_files:
 
     # ── Tab: AFM Profile ──────────────────────────────────────────────────────
     with tab["👤 AFM Profile"]:
+        tab_pdf_download("AFM_Profile", fdf)
         st.markdown('<div class="sec-title">AFM Resolver Profile — Drill Down</div>', unsafe_allow_html=True)
 
         resolver_list = sorted(fdf["Resolver"].unique().tolist())
@@ -1055,6 +1160,7 @@ if _all_parts or uploaded_files:
 
     # ── Tab: Root Cause Analysis ───────────────────────────────────────────────
     with tab["🔍 Root Cause"]:
+        tab_pdf_download("Root_Cause", fdf)
         st.markdown('<div class="sec-title">Root Cause Analysis — Recurring Issues</div>', unsafe_allow_html=True)
 
         type_counts = fdf["Andon Type"].value_counts()
@@ -1161,65 +1267,81 @@ if _all_parts or uploaded_files:
 
     # ── Tab: AFM Performance ──────────────────────────────────────────────────
     with tab["AFM Performance"]:
+        tab_pdf_download("AFM_Performance", fdf)
         st.markdown('<div class="sec-title">Count and Average Dwell Time by Resolver × Andon Type</div>', unsafe_allow_html=True)
 
-        andon_types   = sorted(fdf["Andon Type"].dropna().unique())
-        all_resolvers = sorted(fdf["Resolver"].unique())
+        # ── NEW: Andon Type filter for this tab ──────────────────────────────
+        all_andon_types_afm = sorted(fdf["Andon Type"].dropna().unique().tolist())
+        sel_andon_types_afm = st.multiselect(
+            "🔽 Filter by Andon Type (leave empty = show all)",
+            options=all_andon_types_afm,
+            default=[],
+            key="afm_perf_andon_filter",
+            help="Select one or more Andon Types to narrow the table and charts below."
+        )
+        afm_fdf = fdf[fdf["Andon Type"].isin(sel_andon_types_afm)] if sel_andon_types_afm else fdf.copy()
 
-        cp = fdf.pivot_table(index="Resolver", columns="Andon Type",
-                             values="Resolve_Min", aggfunc="count", fill_value=0).reindex(all_resolvers, fill_value=0)
-        ap = fdf.pivot_table(index="Resolver", columns="Andon Type",
-                             values="Resolve_Min", aggfunc="mean").round(2).reindex(all_resolvers)
+        if afm_fdf.empty:
+            st.warning("No data matches the selected Andon Type filter.")
+        else:
+            andon_types   = sorted(afm_fdf["Andon Type"].dropna().unique())
+            all_resolvers = sorted(afm_fdf["Resolver"].unique())
 
-        afm_cols = {}
-        for cat in andon_types:
-            afm_cols[(cat, "Andon Count")]    = cp[cat].astype(int)
-            afm_cols[(cat, "Dwell Time Avg")] = ap[cat]
-        afm_cols[("Total Andons", "Count")]    = cp[andon_types].sum(axis=1).astype(int)
-        afm_cols[("Total Andons", "Avg Time")] = fdf.groupby("Resolver")["Resolve_Min"].mean().reindex(all_resolvers).round(2)
+            cp = afm_fdf.pivot_table(index="Resolver", columns="Andon Type",
+                                 values="Resolve_Min", aggfunc="count", fill_value=0).reindex(all_resolvers, fill_value=0)
+            ap = afm_fdf.pivot_table(index="Resolver", columns="Andon Type",
+                                 values="Resolve_Min", aggfunc="mean").round(2).reindex(all_resolvers)
 
-        afm_tbl = pd.DataFrame(afm_cols)
-        afm_tbl.columns = pd.MultiIndex.from_tuples(afm_tbl.columns)
-        afm_tbl.index.name = "AFM"
+            afm_cols = {}
+            for cat in andon_types:
+                afm_cols[(cat, "Andon Count")]    = cp[cat].astype(int)
+                afm_cols[(cat, "Dwell Time Avg")] = ap[cat]
+            afm_cols[("Total Andons", "Count")]    = cp[andon_types].sum(axis=1).astype(int)
+            afm_cols[("Total Andons", "Avg Time")] = afm_fdf.groupby("Resolver")["Resolve_Min"].mean().reindex(all_resolvers).round(2)
 
-        grand = {}
-        for cat in andon_types:
-            sub = fdf[fdf["Andon Type"] == cat]
-            grand[(cat, "Andon Count")]    = int(sub["Resolve_Min"].count())
-            grand[(cat, "Dwell Time Avg")] = round(sub["Resolve_Min"].mean(), 2)
-        grand[("Total Andons", "Count")]    = int(fdf["Resolve_Min"].count())
-        grand[("Total Andons", "Avg Time")] = round(fdf["Resolve_Min"].mean(), 2)
+            afm_tbl = pd.DataFrame(afm_cols)
+            afm_tbl.columns = pd.MultiIndex.from_tuples(afm_tbl.columns)
+            afm_tbl.index.name = "AFM"
 
-        grand_row = pd.DataFrame(grand, index=["Grand Total"])
-        grand_row.columns = pd.MultiIndex.from_tuples(grand_row.columns)
-        afm_tbl = pd.concat([afm_tbl, grand_row])
+            grand = {}
+            for cat in andon_types:
+                sub = afm_fdf[afm_fdf["Andon Type"] == cat]
+                grand[(cat, "Andon Count")]    = int(sub["Resolve_Min"].count())
+                grand[(cat, "Dwell Time Avg")] = round(sub["Resolve_Min"].mean(), 2)
+            grand[("Total Andons", "Count")]    = int(afm_fdf["Resolve_Min"].count())
+            grand[("Total Andons", "Avg Time")] = round(afm_fdf["Resolve_Min"].mean(), 2)
 
-        dwell_cs = [(c, "Dwell Time Avg") for c in andon_types] + [("Total Andons", "Avg Time")]
+            grand_row = pd.DataFrame(grand, index=["Grand Total"])
+            grand_row.columns = pd.MultiIndex.from_tuples(grand_row.columns)
+            afm_tbl = pd.concat([afm_tbl, grand_row])
 
-        def _style_afm(data):
-            s = pd.DataFrame("", index=data.index, columns=data.columns)
-            rows = [i for i in data.index if i != "Grand Total"]
-            for col in dwell_cs:
-                if col in data.columns:
-                    ser = data.loc[rows, col]
-                    for idx in rows:
-                        s.loc[idx, col] = dwell_color(data.loc[idx, col], ser)
-            s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
-            return s
+            dwell_cs = [(c, "Dwell Time Avg") for c in andon_types] + [("Total Andons", "Avg Time")]
 
-        afm_styler = (afm_tbl.style.apply(_style_afm, axis=None)
-            .format({c: "{:.2f}" for c in afm_tbl.columns if c[1] in ("Dwell Time Avg", "Avg Time")}, na_rep="—")
-            .format({c: "{:.0f}" for c in afm_tbl.columns if c[1] in ("Andon Count", "Count")}, na_rep="—"))
-        st.dataframe(afm_styler, use_container_width=True, height=430)
+            def _style_afm(data):
+                s = pd.DataFrame("", index=data.index, columns=data.columns)
+                rows = [i for i in data.index if i != "Grand Total"]
+                for col in dwell_cs:
+                    if col in data.columns:
+                        ser = data.loc[rows, col]
+                        for idx in rows:
+                            s.loc[idx, col] = dwell_color(data.loc[idx, col], ser)
+                s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
+                return s
 
-        c1, c2 = st.columns(2)
-        with c1:
-            st.plotly_chart(donut_chart(fdf, "Resolver", "Andons by Resolver"), use_container_width=True)
-        with c2:
-            st.plotly_chart(hbar_chart(fdf, "Resolver", "Avg Resolve Time by Resolver"), use_container_width=True)
+            afm_styler = (afm_tbl.style.apply(_style_afm, axis=None)
+                .format({c: "{:.2f}" for c in afm_tbl.columns if c[1] in ("Dwell Time Avg", "Avg Time")}, na_rep="—")
+                .format({c: "{:.0f}" for c in afm_tbl.columns if c[1] in ("Andon Count", "Count")}, na_rep="—"))
+            st.dataframe(afm_styler, use_container_width=True, height=430)
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.plotly_chart(donut_chart(afm_fdf, "Resolver", "Andons by Resolver"), use_container_width=True)
+            with c2:
+                st.plotly_chart(hbar_chart(afm_fdf, "Resolver", "Avg Resolve Time by Resolver"), use_container_width=True)
 
     # ── Tab: By Andon Type ────────────────────────────────────────────────────
     with tab["By Andon Type"]:
+        tab_pdf_download("By_Andon_Type", fdf)
         st.markdown('<div class="sec-title">Number of Andons and Dwell Time by Date × Andon Type</div>', unsafe_allow_html=True)
         tbl_at = build_group_pivot(fdf, "Andon Type")
         st.dataframe(apply_pivot_style(tbl_at), use_container_width=True, height=400)
@@ -1231,6 +1353,7 @@ if _all_parts or uploaded_files:
 
     # ── Tab: Weekly Breakdown ─────────────────────────────────────────────────
     with tab["Weekly Breakdown"]:
+        tab_pdf_download("Weekly_Breakdown", fdf)
         weeks_avail = sorted(fdf["Week"].dropna().unique(), reverse=True)
 
         st.markdown('<div class="sec-title">Andons by Type and Week</div>', unsafe_allow_html=True)
@@ -1411,6 +1534,7 @@ if _all_parts or uploaded_files:
     # ── Optional tabs ─────────────────────────────────────────────────────────
     if optional_cols["Equipment Type"]:
         with tab["By Equipment Type"]:
+            tab_pdf_download("By_Equipment_Type", fdf)
             st.markdown('<div class="sec-title">Number of Andons and Resolution Times by Equipment Type</div>', unsafe_allow_html=True)
             tbl_et = build_group_pivot(fdf, "Equipment Type")
             st.dataframe(apply_pivot_style(tbl_et), use_container_width=True, height=400)
@@ -1422,6 +1546,7 @@ if _all_parts or uploaded_files:
 
     if optional_cols["Zone"]:
         with tab["By Zone"]:
+            tab_pdf_download("By_Zone", fdf)
             st.markdown('<div class="sec-title">Count of Resolver and Avg Dwell Time by Creation Date and Zone</div>', unsafe_allow_html=True)
             tbl_z = build_group_pivot(fdf, "Zone")
             st.dataframe(apply_pivot_style(tbl_z), use_container_width=True, height=400)
@@ -1433,6 +1558,7 @@ if _all_parts or uploaded_files:
 
     if optional_cols["Shift"]:
         with tab["By Shift"]:
+            tab_pdf_download("By_Shift", fdf)
             st.markdown('<div class="sec-title">Count of Resolver and Avg Dwell Time by Creation Date and Shift</div>', unsafe_allow_html=True)
             tbl_sh = build_group_pivot(fdf, "Shift")
             st.dataframe(apply_pivot_style(tbl_sh), use_container_width=True, height=400)
@@ -1444,6 +1570,7 @@ if _all_parts or uploaded_files:
 
     if optional_cols["Blocking"]:
         with tab["Blocking Analysis"]:
+            tab_pdf_download("Blocking_Analysis", fdf)
             st.markdown('<div class="sec-title">Number of Andons and Resolution Times by Resolver and Blocking Status</div>', unsafe_allow_html=True)
             bl_vals = sorted(fdf["Blocking"].dropna().unique())
             bl_res_cols = {}
@@ -1492,6 +1619,7 @@ if _all_parts or uploaded_files:
 
     if optional_cols["Equipment ID"]:
         with tab["Equipment ID Analysis"]:
+            tab_pdf_download("Equipment_ID_Analysis", fdf)
             st.markdown('<div class="sec-title">Count of Problem Id by Equipment ID and Week Number</div>', unsafe_allow_html=True)
             eid_weeks = sorted(fdf["Week"].dropna().unique(), reverse=True)
             eid_count_p = fdf.pivot_table(index="Equipment ID", columns="Week",
@@ -1543,6 +1671,7 @@ if _all_parts or uploaded_files:
 
     # ── Tab: Hourly Trend ─────────────────────────────────────────────────────
     with tab["Hourly Trend"]:
+        tab_pdf_download("Hourly_Trend", fdf)
         st.markdown('<div class="sec-title">Count of Andon Type and Avg Dwell Time by Hour of Day</div>', unsafe_allow_html=True)
         hourly_count = (fdf.groupby(["Hour", "Andon Type"])["Resolve_Min"]
                         .count().reset_index().rename(columns={"Resolve_Min": "Count"}))
@@ -1585,6 +1714,7 @@ if _all_parts or uploaded_files:
 
     # ── Tab: Heatmap ──────────────────────────────────────────────────────────
     with tab["Heatmap"]:
+        tab_pdf_download("Heatmap", fdf)
         st.markdown('<div class="sec-title">Avg Resolve Time Heatmap — Resolver × Andon Type</div>', unsafe_allow_html=True)
         pivot_hm = fdf.pivot_table(index="Resolver", columns="Andon Type",
                                    values="Resolve_Min", aggfunc="mean").round(2)
@@ -1621,6 +1751,7 @@ if _all_parts or uploaded_files:
 
     # ── Tab: Raw Data ─────────────────────────────────────────────────────────
     with tab["Raw Data"]:
+        tab_pdf_download("Raw_Data", fdf)
         st.markdown('<div class="sec-title">Raw Resolved Andon Records</div>', unsafe_allow_html=True)
         st.markdown(f"**{len(fdf):,}** records matching current filters · from **{len(uploaded_files)}** file(s)")
         st.dataframe(fdf, use_container_width=True, height=500)
@@ -1642,9 +1773,6 @@ if _all_parts or uploaded_files:
                                use_container_width=True)
 
     # ── Tab: Export ───────────────────────────────────────────────────────────
-    # ── ADD THIS to your Export tab in app.py ────────────────────────────────────
-# Replace the existing Export tab content with this:
-
     with tab["📤 Export"]:
         st.markdown('<div class="sec-title">Export Full Reports</div>', unsafe_allow_html=True)
         st.markdown(
@@ -1653,7 +1781,6 @@ if _all_parts or uploaded_files:
         )
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # ── Daily Reports ──────────────────────────────────────────────────────
         st.markdown('<div class="sec-title">📅 Daily Reports</div>', unsafe_allow_html=True)
         d1, d2 = st.columns(2)
 
@@ -1696,7 +1823,6 @@ if _all_parts or uploaded_files:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # ── Weekly Reports ─────────────────────────────────────────────────────
         st.markdown('<div class="sec-title">📆 Weekly Reports</div>', unsafe_allow_html=True)
         w1, w2 = st.columns(2)
 
@@ -1747,7 +1873,6 @@ if _all_parts or uploaded_files:
         if not hist_records:
             st.info("No upload history yet. Upload a file to start building your history.")
         else:
-            # ── Summary table of all saved records ───────────────────────────
             summary_rows = []
             for r in hist_records:
                 summary_rows.append({
@@ -1764,7 +1889,6 @@ if _all_parts or uploaded_files:
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # ── Per-dataset detail ────────────────────────────────────────────
             fname_options = [r["file_name"] for r in hist_records]
             sel_hist = st.selectbox("Inspect dataset", fname_options, key="hist_sel")
             sel_rec  = next(r for r in hist_records if r["file_name"] == sel_hist)
@@ -1775,71 +1899,36 @@ if _all_parts or uploaded_files:
             with h_daily:
                 daily_df = history_db.load_daily(sel_hash)
                 if daily_df is not None and not daily_df.empty:
-                    st.markdown(
-                        f"**{len(daily_df)} day(s)** of data for **{sel_hist}** "
-                        f"(uploaded {sel_rec.get('upload_date', '')})"
-                    )
+                    st.markdown(f"**{len(daily_df)} day(s)** of data for **{sel_hist}**")
                     fmt = {}
                     if "Avg_Resolve_Min" in daily_df.columns:
                         fmt["Avg_Resolve_Min"] = "{:.2f}"
-                    st.dataframe(
-                        daily_df.style.format(fmt),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-                    csv_d = daily_df.to_csv(index=False).encode()
-                    st.download_button(
-                        "⬇️ Download daily CSV",
-                        csv_d,
-                        f"{sel_hist}_daily.csv",
-                        "text/csv",
-                        use_container_width=True,
-                    )
+                    st.dataframe(daily_df.style.format(fmt), use_container_width=True, hide_index=True)
+                    st.download_button("⬇️ Download daily CSV", daily_df.to_csv(index=False).encode(),
+                                       f"{sel_hist}_daily.csv", "text/csv", use_container_width=True)
                 else:
                     st.info("No daily breakdown available for this file.")
 
             with h_weekly:
                 weekly_df = history_db.load_weekly(sel_hash)
                 if weekly_df is not None and not weekly_df.empty:
-                    st.markdown(
-                        f"**{len(weekly_df)} week(s)** of data for **{sel_hist}** "
-                        f"(uploaded {sel_rec.get('upload_date', '')})"
-                    )
+                    st.markdown(f"**{len(weekly_df)} week(s)** of data for **{sel_hist}**")
                     fmt = {}
                     if "Avg_Resolve_Min" in weekly_df.columns:
                         fmt["Avg_Resolve_Min"] = "{:.2f}"
-                    st.dataframe(
-                        weekly_df.style.format(fmt),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
-                    csv_w = weekly_df.to_csv(index=False).encode()
-                    st.download_button(
-                        "⬇️ Download weekly CSV",
-                        csv_w,
-                        f"{sel_hist}_weekly.csv",
-                        "text/csv",
-                        use_container_width=True,
-                    )
+                    st.dataframe(weekly_df.style.format(fmt), use_container_width=True, hide_index=True)
+                    st.download_button("⬇️ Download weekly CSV", weekly_df.to_csv(index=False).encode(),
+                                       f"{sel_hist}_weekly.csv", "text/csv", use_container_width=True)
                 else:
                     st.info("No weekly breakdown available for this file.")
 
             with h_proc:
                 proc_df = history_db.load_dataframe(sel_hash)
                 if proc_df is not None and not proc_df.empty:
-                    st.markdown(
-                        f"**{len(proc_df):,} rows** · **{proc_df.shape[1]} columns** — "
-                        f"full extracted dataset for **{sel_hist}**"
-                    )
+                    st.markdown(f"**{len(proc_df):,} rows** · **{proc_df.shape[1]} columns**")
                     st.dataframe(proc_df, use_container_width=True, hide_index=True)
-                    csv_p = proc_df.to_csv(index=False).encode()
-                    st.download_button(
-                        "⬇️ Download processed CSV",
-                        csv_p,
-                        f"{sel_hist}_processed.csv",
-                        "text/csv",
-                        use_container_width=True,
-                    )
+                    st.download_button("⬇️ Download processed CSV", proc_df.to_csv(index=False).encode(),
+                                       f"{sel_hist}_processed.csv", "text/csv", use_container_width=True)
                 else:
                     st.info("No processed data available for this file.")
 
