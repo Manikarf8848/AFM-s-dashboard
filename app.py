@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import hashlib
+import io
 import report_builder
 import history_db
 
@@ -9,6 +11,10 @@ st.set_page_config(page_title="LCY3 AFM Dashboard", layout="wide", page_icon="�
 
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = True
+if "saved_active_hashes" not in st.session_state:
+    st.session_state.saved_active_hashes = []
+if "duplicate_warnings" not in st.session_state:
+    st.session_state.duplicate_warnings = []
 
 DM = st.session_state.dark_mode
 
@@ -151,7 +157,7 @@ div[data-testid="stTabs"] button[aria-selected="true"] {{
     box-shadow: 0 0 0 3px rgba(57,73,171,0.2) !important;
 }}
 
-p, label, span, div {{ color: {_text}; }}
+p, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {_text}; }}
 
 /* ── RC Banner ── */
 .rc-banner {{
@@ -248,27 +254,55 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<div style='font-size:0.95rem;font-weight:700;color:{_text};'>📂 Upload History</div>", unsafe_allow_html=True)
-    history_records = history_db.get_history(20)
+    st.markdown(f"<div style='font-size:0.95rem;font-weight:700;color:{_text};margin-bottom:8px;'>💾 Saved Datasets</div>", unsafe_allow_html=True)
+    history_records = history_db.get_history(50)
     if history_records:
-        for rec in history_records[:8]:
-            weeks_str = ", ".join([f"Wk {w}" for w in rec["week_numbers"]]) or "—"
+        for rec in history_records:
+            fhash = rec.get("file_hash", "")
+            fname = rec.get("file_name", "unknown")
+            display_name = fname[:24] + "…" if len(fname) > 24 else fname
+            is_active = fhash in st.session_state.saved_active_hashes
+            weeks_str = ", ".join([f"Wk {w}" for w in rec.get("week_numbers", [])]) or "—"
+            active_badge = f"<span style='background:rgba(76,175,80,0.2);color:#4caf50;border:1px solid rgba(76,175,80,0.4);border-radius:10px;padding:1px 7px;font-size:0.65rem;font-weight:700;'>ACTIVE</span>" if is_active else ""
             st.markdown(f"""
-            <div style="background:{_bg3}; border-radius:8px; padding:7px 10px;
-                        margin-bottom:6px; border-left:3px solid {_accent}; font-size:0.75rem;">
+            <div style="background:{_bg3}; border-radius:10px; padding:8px 10px;
+                        margin-bottom:6px; border-left:3px solid {_accent}; font-size:0.74rem;">
                 <div style="font-weight:700;color:{_text};white-space:nowrap;overflow:hidden;
-                            text-overflow:ellipsis;" title="{rec['file_name']}">
-                    📄 {rec['file_name'][:26]}{'…' if len(rec['file_name'])>26 else ''}
+                            text-overflow:ellipsis;margin-bottom:3px;" title="{fname}">
+                    📄 {display_name} {active_badge}
                 </div>
-                <div style="color:{_sub};">{rec['upload_ts'][:16]}</div>
-                <div style="color:{_accent};">{rec['total_andons']:,} andons · {weeks_str}</div>
-                <div style="color:{_sub};">{rec['date_min']} → {rec['date_max']}</div>
+                <div style="color:{_sub};">Saved: {rec.get('upload_ts','')[:16]}</div>
+                <div style="color:{_accent};">{rec.get('total_andons',0):,} andons · {weeks_str}</div>
+                <div style="color:{_sub};">{rec.get('date_min','')} → {rec.get('date_max','')}</div>
             </div>""", unsafe_allow_html=True)
-        if st.button("🗑️ Clear History", use_container_width=True):
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                load_label = "Unload" if is_active else "Load"
+                load_icon = "⏏" if is_active else "▶"
+                if st.button(f"{load_icon} {load_label}", key=f"load_{fhash}", use_container_width=True):
+                    if is_active:
+                        st.session_state.saved_active_hashes = [
+                            h for h in st.session_state.saved_active_hashes if h != fhash
+                        ]
+                    else:
+                        if fhash not in st.session_state.saved_active_hashes:
+                            st.session_state.saved_active_hashes.append(fhash)
+                    st.rerun()
+            with btn_col2:
+                if st.button("Remove", key=f"rm_{fhash}", use_container_width=True):
+                    history_db.remove_entry(fhash)
+                    st.session_state.saved_active_hashes = [
+                        h for h in st.session_state.saved_active_hashes if h != fhash
+                    ]
+                    st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Clear All Saved Data", use_container_width=True):
             history_db.clear_history()
+            st.session_state.saved_active_hashes = []
             st.rerun()
     else:
-        st.caption("No uploads recorded yet.")
+        st.markdown(f"<div style='color:{_sub};font-size:0.8rem;padding:6px 0;'>No saved datasets yet.<br>Upload a file to save it.</div>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown(f"<div style='font-size:0.7rem;color:{_sub};text-align:center;'>LCY3 AFM Dashboard<br>Made by <b>Manish Karki</b></div>", unsafe_allow_html=True)
@@ -452,11 +486,29 @@ def hbar_chart(df, col, title):
     return fig
 
 
+_parts_new = []
+_dup_warnings = []
+_new_file_names = []
+required_cols = ["Status", "Resolver", "Andon Type", "Dwell Time (hh:mm:ss)", "Time Created"]
+
 if uploaded_files:
-    parts = []
     for uf in uploaded_files:
+        raw_bytes = uf.read()
+        uf.seek(0)
+        file_hash = history_db.compute_hash(raw_bytes)
+
+        if history_db.hash_exists(file_hash):
+            existing_name = history_db.get_existing_name(file_hash)
+            _dup_warnings.append(
+                f"**{uf.name}** is identical to a previously saved file "
+                f"(**{existing_name}**) — skipped to avoid duplicates. "
+                f"Load it from the sidebar instead."
+            )
+            if file_hash not in st.session_state.saved_active_hashes:
+                st.session_state.saved_active_hashes.append(file_hash)
+            continue
+
         part = load_data(uf)
-        required_cols = ["Status", "Resolver", "Andon Type", "Dwell Time (hh:mm:ss)", "Time Created"]
         missing = [c for c in required_cols if c not in part.columns]
         if missing:
             st.error(
@@ -465,13 +517,44 @@ if uploaded_files:
             )
             st.stop()
         part["_source_file"] = uf.name
-        parts.append(part)
+        _parts_new.append(part)
+        _new_file_names.append(uf.name)
+
+        raw_for_preprocess = part.copy()
+        raw_for_preprocess["Resolve_Min"] = pd.to_timedelta(
+            raw_for_preprocess["Dwell Time (hh:mm:ss)"], errors="coerce"
+        ).dt.total_seconds() / 60
+        raw_for_preprocess["Time Created"] = pd.to_datetime(
+            raw_for_preprocess["Time Created"], errors="coerce"
+        )
+        raw_for_preprocess["Week"] = raw_for_preprocess["Time Created"].dt.isocalendar().week.astype(int)
         try:
-            history_db.record_upload(uf.name, part)
+            history_db.record_upload(uf.name, raw_for_preprocess, file_hash)
+            if file_hash not in st.session_state.saved_active_hashes:
+                st.session_state.saved_active_hashes.append(file_hash)
         except Exception:
             pass
 
-    df = pd.concat(parts, ignore_index=True)
+for w in _dup_warnings:
+    st.warning(w, icon="⚠️")
+
+_parts_saved = []
+for fhash in st.session_state.saved_active_hashes:
+    if not any(fhash == history_db.compute_hash(b"") for b in []):
+        sdf = history_db.load_dataframe(fhash)
+        if sdf is not None and not sdf.empty:
+            rec = next((r for r in history_db.get_history() if r.get("file_hash") == fhash), {})
+            sdf["_source_file"] = rec.get("file_name", fhash)
+            _parts_saved.append(sdf)
+
+_all_parts = _parts_new + _parts_saved
+
+if _all_parts or uploaded_files:
+    _usable_parts = [p for p in _all_parts if not p.empty]
+    if not _usable_parts:
+        st.info("No active data. Load a saved dataset from the sidebar or upload a new file.")
+        st.stop()
+    df = pd.concat(_usable_parts, ignore_index=True)
 
     df = df[df["Status"] == "Resolved"].copy()
     df = df[~df["Andon Type"].isin(["Product Problem", "Out of Work"])]
@@ -492,16 +575,17 @@ if uploaded_files:
         "Equipment ID":   "Equipment ID"   in df.columns,
     }
 
-    if len(uploaded_files) > 0:
+    active_source_names = df["_source_file"].unique().tolist() if "_source_file" in df.columns else []
+    if active_source_names:
         file_summary_rows = []
-        for uf in uploaded_files:
-            fpart = df[df["_source_file"] == uf.name]
+        for fname in active_source_names:
+            fpart = df[df["_source_file"] == fname]
             if fpart.empty:
                 continue
             resolved_count = len(fpart)
             min_dt = fpart["Time Created"].min()
             max_dt = fpart["Time Created"].max()
-            file_summary_rows.append((uf.name, resolved_count, min_dt, max_dt))
+            file_summary_rows.append((fname, resolved_count, min_dt, max_dt))
 
         if file_summary_rows:
             card_cols = st.columns(len(file_summary_rows))
@@ -541,7 +625,7 @@ if uploaded_files:
         andon_opts = ["All"] + sorted(df["Andon Type"].dropna().unique().tolist())
         sel_andon = st.selectbox("Andon Type", andon_opts)
 
-    with st.expander("➕ More filters"):
+    with st.expander("More filters"):
         all_resolvers_list = sorted(df["Resolver"].unique().tolist())
         excluded_resolvers = st.multiselect(
             "Hide resolvers from dashboard",
@@ -777,7 +861,7 @@ if uploaded_files:
         def flag_slow(row):
             t = get_threshold(None)
             if row["Avg_Time"] > (t or DEFAULT_THRESHOLD) * 1.5:
-                return "🚨 Slow"
+                return "⚠️ Average"
             elif row["Avg_Time"] > (t or DEFAULT_THRESHOLD):
                 return "⚠️ Above target"
             return "✅ On target"
@@ -808,9 +892,9 @@ if uploaded_files:
             s = pd.DataFrame("", index=data.index, columns=data.columns)
             for idx in data.index:
                 status = data.loc[idx, "Status"]
-                if "🚨" in str(status):
+                if "Average" in str(status):
                     s.loc[idx, "Avg Time (min)"] = "background-color: rgb(210,40,40); color:white; font-weight:700"
-                elif "⚠️" in str(status):
+                elif "Above target" in str(status):
                     s.loc[idx, "Avg Time (min)"] = "background-color: rgb(255,140,0); color:black; font-weight:700"
                 else:
                     s.loc[idx, "Avg Time (min)"] = "background-color: rgb(60,180,60); color:white; font-weight:700"
@@ -828,7 +912,7 @@ if uploaded_files:
         fig_lb = go.Figure()
         fig_lb.add_trace(go.Bar(
             x=lb["Resolver"], y=lb["Avg_Time"],
-            marker_color=["rgb(210,40,40)" if "🚨" in s else "rgb(255,140,0)" if "⚠️" in s else "rgb(60,180,60)"
+            marker_color=["rgb(210,40,40)" if "Average" in s else "rgb(255,140,0)" if "Above target" in s else "rgb(60,180,60)"
                           for s in lb["Status"]],
             text=lb["Avg_Time"].round(2), textposition="outside", name="Avg Time"
         ))
@@ -862,7 +946,7 @@ if uploaded_files:
         if is_fastest:     badge_html += '<span class="badge badge-gold">⚡ Fastest</span>'
         if is_most_active: badge_html += '<span class="badge badge-blue">🔥 Most Active</span>'
         if p_within >= 80: badge_html += '<span class="badge badge-green">✅ On Target</span>'
-        if p_avg > DEFAULT_THRESHOLD * 1.5: badge_html += '<span class="badge badge-red">🚨 Slow</span>'
+        if p_avg > DEFAULT_THRESHOLD * 1.5: badge_html += '<span class="badge badge-red">⚠️ Average</span>'
 
         st.markdown(f"""
         <div class="profile-card">
@@ -996,7 +1080,7 @@ if uploaded_files:
             tc_df["Avg Time (min)"] = tc_df["Andon Type"].map(
                 fdf.groupby("Andon Type")["Resolve_Min"].mean().round(2))
             tc_df["Status"] = tc_df["Andon Type"].apply(
-                lambda t: "🚨 Above target" if fdf[fdf["Andon Type"]==t]["Resolve_Min"].mean() > get_threshold(t) * 1.5
+                lambda t: "⚠️ Above target" if fdf[fdf["Andon Type"]==t]["Resolve_Min"].mean() > get_threshold(t) * 1.5
                 else ("⚠️ Borderline" if fdf[fdf["Andon Type"]==t]["Resolve_Min"].mean() > (get_threshold(t) or DEFAULT_THRESHOLD)
                       else "✅ OK") if get_threshold(t) is not None else "—"
             )
@@ -1061,15 +1145,15 @@ if uploaded_files:
                    .agg(Count="count", Avg="mean").reset_index()
                    .sort_values("Avg", ascending=False))
         slow_df["Status"] = slow_df["Avg"].apply(
-            lambda x: "🚨 Slow" if x > DEFAULT_THRESHOLD * 1.5
+            lambda x: "⚠️ Average" if x > DEFAULT_THRESHOLD * 1.5
             else ("⚠️ Above target" if x > DEFAULT_THRESHOLD else "✅ OK"))
         slow_df["Avg"] = slow_df["Avg"].round(2)
         slow_flagged = slow_df[slow_df["Status"] != "✅ OK"]
         if not slow_flagged.empty:
             slow_flagged.columns = ["Resolver", "Total Andons", "Avg Time (min)", "Status"]
-            st.dataframe(slow_flagged.style.applymap(
-                lambda v: "color: #ef5350; font-weight:700" if "🚨" in str(v)
-                else ("color: #ffa726; font-weight:700" if "⚠️" in str(v) else ""),
+            st.dataframe(slow_flagged.style.map(
+                lambda v: "color: #ef5350; font-weight:700" if "Average" in str(v)
+                else ("color: #ffa726; font-weight:700" if "Above target" in str(v) else ""),
                 subset=["Status"]
             ), use_container_width=True)
         else:
