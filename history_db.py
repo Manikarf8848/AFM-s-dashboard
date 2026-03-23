@@ -1,63 +1,56 @@
 """
-history_db.py  —  Persistent upload history using local disk storage.
-Each uploaded file is saved as a Parquet file, metadata in JSON.
-Data survives server restarts.
+history_db.py  —  persistent upload history using Parquet + JSON metadata.
+Data is stored under .andon_data/ and survives server restarts.
 """
 
-import os
-import json
 import hashlib
-import datetime
+import json
+import pathlib
+
 import pandas as pd
 
-_DATA_DIR = os.path.join(os.path.dirname(__file__), ".andon_data")
-_META_FILE = os.path.join(_DATA_DIR, "metadata.json")
+_DATA_DIR = pathlib.Path(".andon_data")
+_META_FILE = _DATA_DIR / "metadata.json"
 
 
 def _ensure_dir():
-    os.makedirs(_DATA_DIR, exist_ok=True)
+    _DATA_DIR.mkdir(exist_ok=True)
 
 
-def _load_meta() -> list:
+def _load_meta() -> dict:
     _ensure_dir()
-    if not os.path.exists(_META_FILE):
-        return []
-    try:
-        with open(_META_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return []
+    if _META_FILE.exists():
+        try:
+            return json.loads(_META_FILE.read_text())
+        except Exception:
+            return {}
+    return {}
 
 
-def _save_meta(records: list):
+def _save_meta(meta: dict):
     _ensure_dir()
-    with open(_META_FILE, "w") as f:
-        json.dump(records, f, indent=2)
+    _META_FILE.write_text(json.dumps(meta, indent=2))
 
+
+# ── Public API ────────────────────────────────────────────────────────────────
 
 def compute_hash(raw_bytes: bytes) -> str:
-    return hashlib.sha256(raw_bytes).hexdigest()[:16]
+    return hashlib.sha256(raw_bytes).hexdigest()
 
 
 def hash_exists(file_hash: str) -> bool:
-    records = _load_meta()
-    return any(r["file_hash"] == file_hash for r in records)
+    return file_hash in _load_meta()
 
 
 def get_existing_name(file_hash: str) -> str:
-    records = _load_meta()
-    for r in records:
-        if r["file_hash"] == file_hash:
-            return r["file_name"]
-    return ""
+    meta = _load_meta()
+    return meta.get(file_hash, {}).get("file_name", "unknown")
 
 
-def record_upload(file_name: str, df: pd.DataFrame, file_hash: str = ""):
+def record_upload(file_name: str, df: pd.DataFrame, file_hash: str):
     _ensure_dir()
-    records = _load_meta()
-
-    if file_hash and any(r["file_hash"] == file_hash for r in records):
-        return
+    parquet_path = _DATA_DIR / f"{file_hash}.parquet"
+    df.to_parquet(parquet_path, index=False)
 
     weeks = []
     if "Week" in df.columns:
@@ -69,78 +62,61 @@ def record_upload(file_name: str, df: pd.DataFrame, file_hash: str = ""):
         if not tc.empty:
             date_min = str(tc.min().date())
             date_max = str(tc.max().date())
+            upload_ts = str(tc.max())
 
-    upload_ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    if not file_hash:
-        file_hash = hashlib.sha256(file_name.encode()).hexdigest()[:16]
-
-    parquet_path = os.path.join(_DATA_DIR, f"{file_hash}.parquet")
-    try:
-        df.to_parquet(parquet_path, index=False)
-    except Exception:
-        try:
-            df.to_csv(parquet_path.replace(".parquet", ".csv"), index=False)
-            parquet_path = parquet_path.replace(".parquet", ".csv")
-        except Exception:
-            pass
-
-    records.insert(0, {
-        "file_name":    file_name,
-        "file_hash":    file_hash,
-        "upload_ts":    upload_ts,
+    meta = _load_meta()
+    meta[file_hash] = {
+        "file_name": file_name,
+        "upload_ts": upload_ts,
         "total_andons": len(df),
         "week_numbers": weeks,
-        "date_min":     date_min,
-        "date_max":     date_max,
-        "data_path":    parquet_path,
-    })
-    _save_meta(records)
-
-
-def get_history(n: int = 50) -> list:
-    return _load_meta()[:n]
+        "date_min": date_min,
+        "date_max": date_max,
+    }
+    _save_meta(meta)
 
 
 def load_dataframe(file_hash: str) -> pd.DataFrame | None:
-    records = _load_meta()
-    for r in records:
-        if r["file_hash"] == file_hash:
-            path = r.get("data_path", "")
-            if path and os.path.exists(path):
-                try:
-                    if path.endswith(".parquet"):
-                        return pd.read_parquet(path)
-                    else:
-                        return pd.read_csv(path)
-                except Exception:
-                    return None
+    parquet_path = _DATA_DIR / f"{file_hash}.parquet"
+    if parquet_path.exists():
+        try:
+            return pd.read_parquet(parquet_path)
+        except Exception:
+            return None
     return None
 
 
+def get_history(n: int = 20) -> list[dict]:
+    meta = _load_meta()
+    records = []
+    for fhash, info in meta.items():
+        records.append({
+            "file_hash": fhash,
+            "file_name": info.get("file_name", "unknown"),
+            "upload_ts": info.get("upload_ts", ""),
+            "total_andons": info.get("total_andons", 0),
+            "week_numbers": info.get("week_numbers", []),
+            "date_min": info.get("date_min", ""),
+            "date_max": info.get("date_max", ""),
+        })
+    records.sort(key=lambda r: r["upload_ts"], reverse=True)
+    return records[:n]
+
+
 def remove_entry(file_hash: str):
-    records = _load_meta()
-    new_records = []
-    for r in records:
-        if r["file_hash"] == file_hash:
-            path = r.get("data_path", "")
-            if path and os.path.exists(path):
-                try:
-                    os.remove(path)
-                except Exception:
-                    pass
-        else:
-            new_records.append(r)
-    _save_meta(new_records)
+    meta = _load_meta()
+    if file_hash in meta:
+        del meta[file_hash]
+        _save_meta(meta)
+    parquet_path = _DATA_DIR / f"{file_hash}.parquet"
+    if parquet_path.exists():
+        parquet_path.unlink()
 
 
 def clear_history():
-    records = _load_meta()
-    for r in records:
-        path = r.get("data_path", "")
-        if path and os.path.exists(path):
-            try:
-                os.remove(path)
-            except Exception:
-                pass
-    _save_meta([])
+    meta = _load_meta()
+    for fhash in list(meta.keys()):
+        parquet_path = _DATA_DIR / f"{fhash}.parquet"
+        if parquet_path.exists():
+            parquet_path.unlink()
+    _save_meta({})
