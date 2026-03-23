@@ -8,7 +8,7 @@ import history_db
 st.set_page_config(page_title="LCY3 AFM Dashboard", layout="wide", page_icon="📊")
 
 if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = False
+    st.session_state.dark_mode = True
 
 DM = st.session_state.dark_mode
 
@@ -23,7 +23,7 @@ _accent  = "#7986cb" if DM else "#3949ab"
 
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 *, .stApp, .block-container, [data-testid="stAppViewContainer"] {{
     font-family: 'Inter', sans-serif !important;
@@ -31,94 +31,211 @@ st.markdown(f"""
 
 .stApp {{ background: {_bg} !important; }}
 .block-container {{ padding-top: 0.6rem; background: {_bg} !important; }}
-[data-testid="stSidebar"] {{ background: {_bg2} !important; }}
+[data-testid="stSidebar"] {{
+    background: {_bg2} !important;
+    border-right: 1px solid {"#2a2d3e" if DM else "#e0e0e0"} !important;
+}}
 [data-testid="stSidebar"] * {{ color: {_text} !important; }}
 
+/* ── Scrollbar ── */
+::-webkit-scrollbar {{ width: 6px; height: 6px; }}
+::-webkit-scrollbar-track {{ background: {_bg2}; }}
+::-webkit-scrollbar-thumb {{ background: {_accent}; border-radius: 10px; }}
+::-webkit-scrollbar-thumb:hover {{ background: #5c6bc0; }}
+
+/* ── Header ── */
 .dash-header {{
-    background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%);
-    padding: 1.1rem 2rem; border-radius: 14px; margin-bottom: 1rem;
+    background: {"linear-gradient(135deg, #0d1333 0%, #1a237e 45%, #3949ab 100%)" if DM else "linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)"};
+    padding: 1.2rem 2rem; border-radius: 16px; margin-bottom: 1rem;
     color: white; display: flex; align-items: center; gap: 1.5rem;
-    box-shadow: 0 4px 24px rgba(57,73,171,0.35);
-    animation: slideDown 0.5s ease-out;
+    box-shadow: {"0 4px 32px rgba(57,73,171,0.6), 0 0 0 1px rgba(121,134,203,0.15)" if DM else "0 4px 24px rgba(57,73,171,0.35)"};
+    animation: slideDown 0.5s cubic-bezier(0.22,1,0.36,1);
+    position: relative; overflow: hidden;
+}}
+.dash-header::before {{
+    content: ''; position: absolute; top: -50%; right: -10%;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(121,134,203,0.15) 0%, transparent 70%);
+    pointer-events: none;
 }}
 @keyframes slideDown {{
-    from {{ transform: translateY(-18px); opacity: 0; }}
+    from {{ transform: translateY(-20px); opacity: 0; }}
     to   {{ transform: translateY(0);     opacity: 1; }}
 }}
-.dash-header h1 {{ margin: 0; font-size: 1.75rem; font-weight: 800; }}
-.dash-header p  {{ margin: 0.2rem 0 0 0; opacity: 0.85; font-size: 0.82rem; }}
+.dash-header h1 {{ margin: 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; }}
+.dash-header p  {{ margin: 0.2rem 0 0 0; opacity: 0.75; font-size: 0.82rem; }}
 
+/* ── KPI Cards ── */
 .kpi-box {{
-    background: {_card}; border-radius: 12px; padding: 1rem 1.1rem;
-    box-shadow: 0 2px 16px rgba(0,0,0,{"0.35" if DM else "0.08"});
-    text-align: center; border-top: 4px solid {_border};
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    animation: fadeUp 0.4s ease-out both;
+    background: {_card}; border-radius: 14px; padding: 1.1rem 1.2rem;
+    box-shadow: {"0 2px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(57,73,171,0.12)" if DM else "0 2px 16px rgba(0,0,0,0.08)"};
+    text-align: center; border-top: 3px solid {_border};
+    transition: transform 0.25s cubic-bezier(0.22,1,0.36,1),
+                box-shadow 0.25s cubic-bezier(0.22,1,0.36,1);
+    animation: fadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both;
+    cursor: default;
 }}
 .kpi-box:hover {{
-    transform: translateY(-5px);
-    box-shadow: 0 8px 28px rgba(57,73,171,{"0.45" if DM else "0.22"});
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: {"0 12px 36px rgba(57,73,171,0.55), 0 0 0 1px rgba(121,134,203,0.25)" if DM else "0 10px 30px rgba(57,73,171,0.25)"};
 }}
 @keyframes fadeUp {{
-    from {{ transform: translateY(14px); opacity: 0; }}
+    from {{ transform: translateY(16px); opacity: 0; }}
     to   {{ transform: translateY(0);    opacity: 1; }}
 }}
-.kpi-label {{ font-size: 0.72rem; color: {_sub}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }}
-.kpi-value {{ font-size: 1.95rem; font-weight: 800; color: {_text}; line-height: 1.1; }}
-.kpi-sub   {{ font-size: 0.72rem; color: {_sub}; margin-top: 0.2rem; }}
+.kpi-label {{ font-size: 0.69rem; color: {_sub}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; }}
+.kpi-value {{ font-size: 2rem; font-weight: 900; color: {_text}; line-height: 1.1; letter-spacing: -0.02em; }}
+.kpi-sub   {{ font-size: 0.7rem; color: {_sub}; margin-top: 0.25rem; }}
 
+/* ── Section titles ── */
 .sec-title {{
     font-size: 0.95rem; font-weight: 700; color: {_text};
     padding: 0.45rem 0; border-bottom: 2px solid {_accent};
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.75rem; letter-spacing: -0.01em;
 }}
 
+/* ── Profile card ── */
 .profile-card {{
-    background: {_card}; border-radius: 14px; padding: 1.2rem 1.5rem;
+    background: {_card}; border-radius: 16px; padding: 1.3rem 1.6rem;
     border-left: 5px solid {_accent};
-    box-shadow: 0 2px 16px rgba(0,0,0,{"0.35" if DM else "0.08"});
-    animation: fadeUp 0.35s ease-out both;
+    box-shadow: {"0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(57,73,171,0.15)" if DM else "0 2px 16px rgba(0,0,0,0.08)"};
+    animation: fadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+    transition: box-shadow 0.25s ease;
+}}
+.profile-card:hover {{
+    box-shadow: {"0 8px 32px rgba(57,73,171,0.5), 0 0 0 1px rgba(121,134,203,0.2)" if DM else "0 6px 24px rgba(57,73,171,0.2)"};
 }}
 .profile-name {{ font-size: 1.5rem; font-weight: 800; color: {_text}; }}
 .profile-sub  {{ font-size: 0.82rem; color: {_sub}; }}
 
+/* ── Badges ── */
 .badge {{
-    display: inline-block; padding: 2px 10px; border-radius: 20px;
-    font-size: 0.72rem; font-weight: 700; margin: 2px 3px;
+    display: inline-block; padding: 3px 11px; border-radius: 20px;
+    font-size: 0.71rem; font-weight: 700; margin: 2px 3px;
+    transition: transform 0.15s ease;
 }}
-.badge-gold   {{ background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b; }}
-.badge-red    {{ background: #ef535022; color: #ef5350; border: 1px solid #ef5350; }}
-.badge-green  {{ background: #4caf5022; color: #4caf50; border: 1px solid #4caf50; }}
-.badge-blue   {{ background: {_accent}22; color: {_accent}; border: 1px solid {_accent}; }}
+.badge:hover {{ transform: scale(1.05); }}
+.badge-gold   {{ background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.4); }}
+.badge-red    {{ background: rgba(239,83,80,0.15);  color: #ef5350; border: 1px solid rgba(239,83,80,0.4); }}
+.badge-green  {{ background: rgba(76,175,80,0.15);  color: #4caf50; border: 1px solid rgba(76,175,80,0.4); }}
+.badge-blue   {{ background: rgba(121,134,203,0.15); color: {_accent}; border: 1px solid rgba(121,134,203,0.4); }}
 
+/* ── Tabs ── */
 div[data-testid="stTabs"] button {{
-    font-weight: 600; font-size: 0.85rem;
+    font-weight: 600; font-size: 0.83rem;
     color: {_sub} !important;
-    transition: color 0.2s;
+    transition: color 0.2s ease, background 0.2s ease;
+    border-radius: 6px 6px 0 0;
+}}
+div[data-testid="stTabs"] button:hover {{
+    color: {_accent} !important;
+    background: {"rgba(57,73,171,0.1)" if DM else "rgba(57,73,171,0.06)"} !important;
 }}
 div[data-testid="stTabs"] button[aria-selected="true"] {{
     color: {_accent} !important;
     border-bottom-color: {_accent} !important;
+    background: {"rgba(57,73,171,0.12)" if DM else "rgba(57,73,171,0.07)"} !important;
 }}
 
-[data-testid="stDataFrame"] {{ border-radius: 10px; overflow: hidden; }}
+/* ── Data frame ── */
+[data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; }}
 
+/* ── Inputs ── */
 [data-testid="stTextInput"] input, [data-testid="stSelectbox"] select {{
     background: {_bg2} !important; color: {_text} !important;
-    border-color: {_border} !important;
+    border-color: {"#3949ab" if DM else "#c5cae9"} !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}}
+[data-testid="stTextInput"] input:focus {{
+    border-color: {_accent} !important;
+    box-shadow: 0 0 0 3px rgba(57,73,171,0.2) !important;
 }}
 
 p, label, span, div {{ color: {_text}; }}
 
+/* ── RC Banner ── */
 .rc-banner {{
     background: linear-gradient(135deg, {"#1e2235" if DM else "#fff3e0"} 0%,
                                         {"#22263a" if DM else "#fff8e1"} 100%);
-    border-left: 5px solid #f59e0b; border-radius: 10px;
+    border-left: 5px solid #f59e0b; border-radius: 12px;
     padding: 1rem 1.4rem; margin-bottom: 1rem;
-    animation: fadeUp 0.4s ease-out both;
+    animation: fadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+    box-shadow: {"0 2px 16px rgba(0,0,0,0.3)" if DM else "0 2px 12px rgba(0,0,0,0.06)"};
 }}
 .rc-issue {{ font-size: 1.05rem; font-weight: 700; color: #f59e0b; }}
 .rc-sub   {{ font-size: 0.82rem; color: {_sub}; margin-top: 4px; }}
+
+/* ── Leaderboard top performer row ── */
+.top-performer-card {{
+    background: {"linear-gradient(135deg, #1e2235, #252847)" if DM else "linear-gradient(135deg, #fffde7, #fff8e1)"};
+    border: {"2px solid rgba(245,158,11,0.4)" if DM else "2px solid rgba(245,158,11,0.5)"};
+    border-radius: 16px; padding: 1.2rem 1.5rem; margin-bottom: 0.5rem;
+    box-shadow: {"0 4px 24px rgba(245,158,11,0.15), 0 0 0 1px rgba(245,158,11,0.1)" if DM else "0 4px 16px rgba(245,158,11,0.2)"};
+    animation: fadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}}
+.top-performer-card:hover {{
+    transform: translateY(-4px);
+    box-shadow: {"0 8px 32px rgba(245,158,11,0.25)" if DM else "0 8px 24px rgba(245,158,11,0.3)"};
+}}
+
+/* ── Overview chart cards ── */
+.chart-card {{
+    background: {_card};
+    border-radius: 14px; padding: 0.5rem;
+    box-shadow: {"0 2px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(57,73,171,0.1)" if DM else "0 2px 14px rgba(0,0,0,0.07)"};
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+    animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
+}}
+.chart-card:hover {{
+    transform: translateY(-3px);
+    box-shadow: {"0 8px 32px rgba(57,73,171,0.35), 0 0 0 1px rgba(121,134,203,0.2)" if DM else "0 6px 24px rgba(57,73,171,0.18)"};
+}}
+
+/* ── Slow flag ── */
+.slow-flag {{
+    display: inline-block; padding: 3px 9px;
+    background: rgba(239,83,80,0.15); color: #ef5350;
+    border: 1px solid rgba(239,83,80,0.4); border-radius: 20px;
+    font-size: 0.7rem; font-weight: 700;
+}}
+.warn-flag {{
+    display: inline-block; padding: 3px 9px;
+    background: rgba(255,167,38,0.15); color: #ffa726;
+    border: 1px solid rgba(255,167,38,0.4); border-radius: 20px;
+    font-size: 0.7rem; font-weight: 700;
+}}
+.ok-flag {{
+    display: inline-block; padding: 3px 9px;
+    background: rgba(76,175,80,0.15); color: #4caf50;
+    border: 1px solid rgba(76,175,80,0.4); border-radius: 20px;
+    font-size: 0.7rem; font-weight: 700;
+}}
+
+/* ── Buttons ── */
+.stButton > button {{
+    background: {"linear-gradient(135deg, #1a237e, #3949ab)" if DM else "linear-gradient(135deg, #3949ab, #5c6bc0)"} !important;
+    color: white !important; border: none !important;
+    border-radius: 8px !important; font-weight: 600 !important;
+    transition: opacity 0.2s ease, transform 0.15s ease !important;
+    box-shadow: 0 2px 12px rgba(57,73,171,0.35) !important;
+}}
+.stButton > button:hover {{
+    opacity: 0.9 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 18px rgba(57,73,171,0.5) !important;
+}}
+
+/* ── File uploader ── */
+[data-testid="stFileUploader"] {{
+    background: {"rgba(30,34,53,0.7)" if DM else "rgba(240,244,255,0.8)"} !important;
+    border-radius: 12px !important;
+    border: {"2px dashed rgba(57,73,171,0.4)" if DM else "2px dashed rgba(57,73,171,0.25)"} !important;
+    transition: border-color 0.2s ease !important;
+}}
+[data-testid="stFileUploader"]:hover {{
+    border-color: {_accent} !important;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -394,15 +511,18 @@ if uploaded_files:
                 time_label = f"{dt_min.strftime('%H:%M')} → {dt_max.strftime('%H:%M')}"
                 display_name = fname if len(fname) <= 28 else fname[:25] + "…"
                 col_obj.markdown(f"""
-                <div style="background:#f0f4ff; border:1px solid #c5cae9; border-left:4px solid #3949ab;
-                            border-radius:8px; padding:10px 14px; margin-bottom:8px;">
-                    <div style="font-size:0.75rem; color:#5c6bc0; font-weight:700;
+                <div style="background:{_card}; border:1px solid {"rgba(57,73,171,0.25)" if DM else "#c5cae9"};
+                            border-left:4px solid {_accent};
+                            border-radius:12px; padding:12px 16px; margin-bottom:8px;
+                            box-shadow: {"0 2px 16px rgba(0,0,0,0.35)" if DM else "0 2px 10px rgba(0,0,0,0.07)"};
+                            transition: transform 0.2s ease, box-shadow 0.2s ease;">
+                    <div style="font-size:0.75rem; color:{_accent}; font-weight:700;
                                 white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
                          title="{fname}">📄 {display_name}</div>
-                    <div style="font-size:1.4rem; font-weight:800; color:#1a237e; line-height:1.2;">{cnt:,}</div>
-                    <div style="font-size:0.72rem; color:#555;">andons resolved</div>
-                    <div style="font-size:0.72rem; color:#3949ab; margin-top:4px;">📅 {date_label}</div>
-                    <div style="font-size:0.72rem; color:#777;">⏰ {time_label}</div>
+                    <div style="font-size:1.5rem; font-weight:900; color:{_text}; line-height:1.2; letter-spacing:-0.02em;">{cnt:,}</div>
+                    <div style="font-size:0.72rem; color:{_sub};">andons resolved</div>
+                    <div style="font-size:0.72rem; color:{_accent}; margin-top:5px;">📅 {date_label}</div>
+                    <div style="font-size:0.72rem; color:{_sub};">⏰ {time_label}</div>
                 </div>""", unsafe_allow_html=True)
 
     f1, f2, f3, f4 = st.columns([2.5, 1.2, 1.2, 1.2])
@@ -474,7 +594,7 @@ if uploaded_files:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tab_names = ["🏆 Leaderboard", "👤 AFM Profile", "🔍 Root Cause", "AFM Performance", "By Andon Type", "Weekly Breakdown"]
+    tab_names = ["📊 Overview", "🏆 Leaderboard", "👤 AFM Profile", "🔍 Root Cause", "AFM Performance", "By Andon Type", "Weekly Breakdown"]
     if optional_cols["Equipment Type"]: tab_names.append("By Equipment Type")
     if optional_cols["Zone"]:           tab_names.append("By Zone")
     if optional_cols["Shift"]:          tab_names.append("By Shift")
@@ -484,6 +604,148 @@ if uploaded_files:
 
     tabs = st.tabs(tab_names)
     tab = {n: t for n, t in zip(tab_names, tabs)}
+
+    # ── Tab: Overview ─────────────────────────────────────────────────────────
+    with tab["📊 Overview"]:
+        st.markdown('<div class="sec-title">Dashboard Overview — Key Insights at a Glance</div>', unsafe_allow_html=True)
+
+        ov1, ov2 = st.columns(2)
+
+        with ov1:
+            st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin-bottom:0.4rem;'>📊 Andons by Resolver (Top 15)</div>", unsafe_allow_html=True)
+            top_resolvers = (fdf.groupby("Resolver")["Resolve_Min"].count()
+                             .nlargest(15).reset_index()
+                             .rename(columns={"Resolve_Min": "Andons"})
+                             .sort_values("Andons"))
+            colors_bar = []
+            max_v = top_resolvers["Andons"].max()
+            for v in top_resolvers["Andons"]:
+                ratio = v / max_v if max_v > 0 else 0
+                if ratio >= 0.85:
+                    colors_bar.append("#7986cb")
+                elif ratio >= 0.5:
+                    colors_bar.append("#5c6bc0")
+                else:
+                    colors_bar.append("#3949ab")
+            fig_ov_bar = go.Figure(go.Bar(
+                y=top_resolvers["Resolver"], x=top_resolvers["Andons"],
+                orientation="h", marker_color=colors_bar,
+                text=top_resolvers["Andons"], textposition="outside",
+                hovertemplate="<b>%{y}</b><br>Andons: %{x:,}<extra></extra>"
+            ))
+            fig_ov_bar.update_layout(
+                height=380, xaxis_title="Andon Count", yaxis_title="",
+                margin=dict(t=10, b=20, l=0, r=40),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color=_text),
+                xaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
+                yaxis=dict(gridcolor="rgba(0,0,0,0)", color=_text),
+            )
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+            st.plotly_chart(fig_ov_bar, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with ov2:
+            st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin-bottom:0.4rem;'>🥧 Andon Types Distribution</div>", unsafe_allow_html=True)
+            type_counts_ov = fdf["Andon Type"].value_counts().reset_index()
+            type_counts_ov.columns = ["Andon Type", "Count"]
+            fig_ov_pie = px.pie(
+                type_counts_ov.head(10), names="Andon Type", values="Count", hole=0.55,
+                color_discrete_sequence=["#7986cb","#5c6bc0","#3949ab","#42a5f5","#26c6da",
+                                          "#66bb6a","#ffa726","#ef5350","#ab47bc","#26a69a"]
+            )
+            fig_ov_pie.update_traces(
+                textinfo="percent+label", textfont_size=9,
+                pull=[0.04 if i == 0 else 0 for i in range(len(type_counts_ov.head(10)))],
+                hovertemplate="<b>%{label}</b><br>Count: %{value:,}<br>%{percent}<extra></extra>"
+            )
+            total_andons_count = int(type_counts_ov["Count"].sum())
+            fig_ov_pie.add_annotation(
+                text=f"<b>{total_andons_count:,}</b>", x=0.5, y=0.5,
+                font_size=20, font_color=_text, showarrow=False
+            )
+            fig_ov_pie.update_layout(
+                height=380, showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.35, font=dict(size=9, color=_text)),
+                margin=dict(t=10, b=10, l=0, r=0),
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color=_text)
+            )
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+            st.plotly_chart(fig_ov_pie, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin:1rem 0 0.4rem;'>📈 Daily Andon Trend</div>", unsafe_allow_html=True)
+        daily_ov = (fdf.groupby("Date").agg(
+            Count=("Resolve_Min", "count"),
+            Avg=("Resolve_Min", "mean")
+        ).reset_index().sort_values("Date"))
+        fig_ov_line = go.Figure()
+        fig_ov_line.add_trace(go.Scatter(
+            x=daily_ov["Date"], y=daily_ov["Count"],
+            mode="lines+markers",
+            name="Daily Andons",
+            line=dict(color="#7986cb", width=2.5, shape="spline", smoothing=0.8),
+            marker=dict(size=7, color="#7986cb",
+                        line=dict(width=2, color=_bg)),
+            fill="tozeroy",
+            fillcolor="rgba(121,134,203,0.15)" if DM else "rgba(57,73,171,0.08)",
+            hovertemplate="<b>%{x}</b><br>Andons: %{y:,}<extra></extra>"
+        ))
+        fig_ov_line.add_trace(go.Scatter(
+            x=daily_ov["Date"], y=daily_ov["Avg"].round(2),
+            mode="lines+markers",
+            name="Avg Resolve Time (min)",
+            yaxis="y2",
+            line=dict(color="#ffa726", width=2, dash="dot"),
+            marker=dict(size=5, color="#ffa726"),
+            hovertemplate="<b>%{x}</b><br>Avg Time: %{y:.2f} min<extra></extra>"
+        ))
+        fig_ov_line.add_hline(
+            y=DEFAULT_THRESHOLD, line_dash="dash", line_color="#ef5350",
+            annotation_text=f"Target ({DEFAULT_THRESHOLD} min)", yref="y2",
+            annotation_font_color="#ef5350", annotation_font_size=10
+        )
+        fig_ov_line.update_layout(
+            height=320, xaxis_title="", yaxis_title="Andon Count",
+            yaxis2=dict(title="Avg Time (min)", overlaying="y", side="right",
+                        showgrid=False, color="#ffa726"),
+            margin=dict(t=20, b=40, l=0, r=60),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                        font=dict(size=10, color=_text)),
+            font=dict(color=_text),
+            xaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
+            yaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
+        )
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+        st.plotly_chart(fig_ov_line, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if optional_cols["Zone"]:
+            st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin:1rem 0 0.4rem;'>🏢 Andons per Zone (Floor)</div>", unsafe_allow_html=True)
+            zone_counts = (fdf.groupby("Zone")["Resolve_Min"].count()
+                           .reset_index().rename(columns={"Resolve_Min": "Andons"})
+                           .sort_values("Andons", ascending=False))
+            fig_zone = px.bar(
+                zone_counts, x="Zone", y="Andons",
+                color="Andons", color_continuous_scale=["#3949ab","#7986cb","#b3baf5"],
+                text=zone_counts["Andons"]
+            )
+            fig_zone.update_traces(textposition="outside",
+                                   hovertemplate="<b>%{x}</b><br>Andons: %{y:,}<extra></extra>")
+            fig_zone.update_layout(
+                height=320, xaxis_title="Zone / Floor", yaxis_title="Andon Count",
+                coloraxis_showscale=False,
+                margin=dict(t=10, b=40, l=0, r=0),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color=_text),
+                xaxis=dict(gridcolor="rgba(0,0,0,0)", color=_text),
+                yaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
+            )
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+            st.plotly_chart(fig_zone, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Tab: Leaderboard ──────────────────────────────────────────────────────
     with tab["🏆 Leaderboard"]:
@@ -523,17 +785,20 @@ if uploaded_files:
         lb["Status"] = lb.apply(flag_slow, axis=1)
 
         b1, b2, b3 = st.columns(3)
-        for box, icon, title, name in [
-            (b1, "⚡", "Fastest Resolver", fastest),
-            (b2, "🔥", "Most Active", most_active),
-            (b3, "🎯", "Most Efficient", most_eff),
+        for box, icon, title, name, accent_color in [
+            (b1, "⚡", "Fastest Resolver",  fastest,     "#f59e0b"),
+            (b2, "🔥", "Most Active",       most_active, "#ef5350"),
+            (b3, "🎯", "Most Efficient",    most_eff,    "#4caf50"),
         ]:
             stats = lb[lb["Resolver"] == name].iloc[0]
             box.markdown(f"""
-            <div class="kpi-box" style="border-top-color:#f59e0b;">
-                <div class="kpi-label">{icon} {title}</div>
-                <div class="kpi-value" style="font-size:1.3rem;">{name}</div>
-                <div class="kpi-sub">{stats['Total_Andons']:,} andons · {stats['Avg_Time']:.2f} min avg</div>
+            <div class="top-performer-card" style="border-color: rgba({','.join(str(int(accent_color.lstrip('#')[i:i+2],16)) for i in (0,2,4))}, 0.4); border-left: 5px solid {accent_color};">
+                <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:{accent_color};margin-bottom:4px;">{icon} {title}</div>
+                <div style="font-size:1.35rem;font-weight:900;color:{_text};line-height:1.15;letter-spacing:-0.02em;">⭐ {name}</div>
+                <div style="font-size:0.75rem;color:{_sub};margin-top:6px;">
+                    <b style="color:{_text};">{stats['Total_Andons']:,}</b> andons &nbsp;·&nbsp;
+                    <b style="color:{accent_color};">{stats['Avg_Time']:.2f} min</b> avg
+                </div>
             </div>""", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -1339,14 +1604,31 @@ if uploaded_files:
         st.info("💡 Reports reflect your current filter selections. Adjust filters on any tab, then download.")
 
 else:
-    st.markdown("""
-    <div style="text-align:center; padding:4rem 2rem; background:#f5f5f5;
-                border-radius:12px; margin-top:1rem; border: 2px dashed #c5cae9;">
-        <h2 style="color:#3949ab; margin-bottom:0.5rem;">👋 Welcome to the LCY3 AFM Dashboard</h2>
-        <p style="color:#666; font-size:1.05rem;">Upload a JSON or CSV file above to explore your Andon data</p>
-        <p style="color:#999; font-size:0.85rem; margin-top:0.5rem;">
-            Required columns: <strong>Status, Resolver, Andon Type, Dwell Time (hh:mm:ss), Time Created</strong><br>
-            Optional columns: <strong>Equipment Type, Zone, Shift, Blocking, Equipment ID</strong>
+    st.markdown(f"""
+    <div style="text-align:center; padding:4rem 2rem;
+                background: {"linear-gradient(135deg, #1a1d27 0%, #1e2235 100%)" if DM else "linear-gradient(135deg, #f0f4ff 0%, #e8eaf6 100%)"};
+                border-radius:16px; margin-top:1.5rem;
+                border: 2px dashed {"rgba(121,134,203,0.35)" if DM else "rgba(57,73,171,0.25)"};
+                box-shadow: {"0 4px 32px rgba(0,0,0,0.4)" if DM else "0 4px 20px rgba(57,73,171,0.1)"};
+                animation: fadeUp 0.5s cubic-bezier(0.22,1,0.36,1);">
+        <div style="font-size:3.5rem;margin-bottom:1rem;filter:drop-shadow(0 0 12px rgba(121,134,203,0.4));">📊</div>
+        <h2 style="color:{"#c5cae9" if DM else "#1a237e"}; margin-bottom:0.5rem; font-size:1.6rem; font-weight:900; letter-spacing:-0.02em;">
+            Welcome to the LCY3 AFM Dashboard
+        </h2>
+        <p style="color:{"#8892b0" if DM else "#555"}; font-size:1rem; margin-top:0.5rem;">
+            Upload a <strong style="color:{"#7986cb" if DM else "#3949ab"};">JSON or CSV file</strong> above to explore your Andon data
         </p>
+        <div style="margin-top:1.5rem; display:inline-flex; flex-direction:column; align-items:center; gap:0.5rem;">
+            <div style="background:{"rgba(57,73,171,0.15)" if DM else "rgba(57,73,171,0.08)"}; border:1px solid {"rgba(121,134,203,0.25)" if DM else "rgba(57,73,171,0.15)"};
+                         border-radius:10px; padding:0.7rem 1.5rem; font-size:0.82rem; color:{"#8892b0" if DM else "#555"}; text-align:left;">
+                <div style="font-weight:700; color:{"#7986cb" if DM else "#3949ab"}; margin-bottom:4px;">✅ Required columns</div>
+                Status &nbsp;·&nbsp; Resolver &nbsp;·&nbsp; Andon Type &nbsp;·&nbsp; Dwell Time (hh:mm:ss) &nbsp;·&nbsp; Time Created
+            </div>
+            <div style="background:{"rgba(57,73,171,0.08)" if DM else "rgba(57,73,171,0.04)"}; border:1px solid {"rgba(121,134,203,0.15)" if DM else "rgba(57,73,171,0.1)"};
+                         border-radius:10px; padding:0.7rem 1.5rem; font-size:0.82rem; color:{"#8892b0" if DM else "#777"}; text-align:left;">
+                <div style="font-weight:700; color:{"#5c6bc0" if DM else "#5c6bc0"}; margin-bottom:4px;">⚡ Optional columns (unlock more tabs)</div>
+                Equipment Type &nbsp;·&nbsp; Zone &nbsp;·&nbsp; Shift &nbsp;·&nbsp; Blocking &nbsp;·&nbsp; Equipment ID
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
