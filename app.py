@@ -1642,49 +1642,102 @@ if _all_parts or uploaded_files:
                                use_container_width=True)
 
     # ── Tab: Export ───────────────────────────────────────────────────────────
+    # ── ADD THIS to your Export tab in app.py ────────────────────────────────────
+# Replace the existing Export tab content with this:
+
     with tab["📤 Export"]:
         st.markdown('<div class="sec-title">Export Full Reports</div>', unsafe_allow_html=True)
         st.markdown(
-            "Each report is a **multi-sheet Excel workbook** — summary KPIs, all pivot tables, "
-            "leaderboard, and embedded charts on a dedicated Charts sheet."
+            "Download reports as **Excel (.xlsx)** or **PDF (.pdf)** — "
+            "each contains summary KPIs, pivot tables, leaderboard and andon type breakdown."
         )
         st.markdown("<br>", unsafe_allow_html=True)
-        e1, e2 = st.columns(2)
 
-        with e1:
+        # ── Daily Reports ──────────────────────────────────────────────────────
+        st.markdown('<div class="sec-title">📅 Daily Reports</div>', unsafe_allow_html=True)
+        d1, d2 = st.columns(2)
+
+        with d1:
             st.markdown("""
             <div style="background:#e8f5e9; border-left:5px solid #388e3c; border-radius:8px;
                         padding:16px 20px; margin-bottom:12px;">
-                <div style="font-size:1.1rem; font-weight:700; color:#1b5e20;">📅 Daily Report</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#1b5e20;">📊 Daily Excel Report</div>
                 <div style="font-size:0.85rem; color:#2e7d32; margin-top:6px; line-height:1.6;">
-                    ✅ Summary KPIs · ✅ AFM Performance · ✅ Andons by Type<br>
-                    ✅ Resolver Leaderboard · ✅ Charts sheet · ✅ Raw Data
+                    ✅ Summary KPIs · ✅ AFM Performance<br>
+                    ✅ Andons by Type · ✅ Leaderboard · ✅ Raw Data
                 </div>
             </div>""", unsafe_allow_html=True)
-            with st.spinner("Generating Daily Report…"):
+            with st.spinner("Generating Daily Excel…"):
                 daily_bytes = report_builder.build_daily_report(fdf, uploaded_files, within_threshold)
-            st.download_button("⬇️ Download Daily Report (.xlsx)", daily_bytes,
+            st.download_button("⬇️ Download Daily Excel", daily_bytes,
                                "LCY3_Daily_Report.xlsx",
                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                use_container_width=True)
 
-        with e2:
+        with d2:
+            st.markdown("""
+            <div style="background:#e8f5e9; border-left:5px solid #2e7d32; border-radius:8px;
+                        padding:16px 20px; margin-bottom:12px;">
+                <div style="font-size:1.1rem; font-weight:700; color:#1b5e20;">📄 Daily PDF Report</div>
+                <div style="font-size:0.85rem; color:#2e7d32; margin-top:6px; line-height:1.6;">
+                    ✅ Cover page · ✅ KPI summary<br>
+                    ✅ Leaderboard · ✅ Andon Types · ✅ Flagged resolvers
+                </div>
+            </div>""", unsafe_allow_html=True)
+            with st.spinner("Generating Daily PDF…"):
+                try:
+                    import pdf_report
+                    daily_pdf = pdf_report.build_pdf_daily(fdf, uploaded_files, within_threshold)
+                    st.download_button("⬇️ Download Daily PDF", daily_pdf,
+                                       "LCY3_Daily_Report.pdf", "application/pdf",
+                                       use_container_width=True)
+                except Exception as e:
+                    st.error(f"PDF generation failed: {e}")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # ── Weekly Reports ─────────────────────────────────────────────────────
+        st.markdown('<div class="sec-title">📆 Weekly Reports</div>', unsafe_allow_html=True)
+        w1, w2 = st.columns(2)
+
+        with w1:
             st.markdown("""
             <div style="background:#e3f2fd; border-left:5px solid #1976d2; border-radius:8px;
                         padding:16px 20px; margin-bottom:12px;">
-                <div style="font-size:1.1rem; font-weight:700; color:#0d47a1;">📆 Weekly Report</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#0d47a1;">📊 Weekly Excel Report</div>
                 <div style="font-size:0.85rem; color:#1565c0; margin-top:6px; line-height:1.6;">
-                    ✅ Weekly KPIs · ✅ Andon Type × Week · ✅ AFM × Week<br>
-                    ✅ System vs Non-System · ✅ Leaderboard · ✅ Charts
+                    ✅ Weekly KPIs · ✅ Andon Type x Week<br>
+                    ✅ AFM x Week · ✅ System vs Non-System
                 </div>
             </div>""", unsafe_allow_html=True)
-            with st.spinner("Generating Weekly Report…"):
+            with st.spinner("Generating Weekly Excel…"):
                 weekly_bytes = report_builder.build_weekly_report(fdf, uploaded_files, within_threshold)
-            st.download_button("⬇️ Download Weekly Report (.xlsx)", weekly_bytes,
+            st.download_button("⬇️ Download Weekly Excel", weekly_bytes,
                                "LCY3_Weekly_Report.xlsx",
                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                use_container_width=True)
 
+        with w2:
+            st.markdown("""
+            <div style="background:#e3f2fd; border-left:5px solid #1565c0; border-radius:8px;
+                        padding:16px 20px; margin-bottom:12px;">
+                <div style="font-size:1.1rem; font-weight:700; color:#0d47a1;">📄 Weekly PDF Report</div>
+                <div style="font-size:0.85rem; color:#1565c0; margin-top:6px; line-height:1.6;">
+                    ✅ Cover page · ✅ Weekly KPIs<br>
+                    ✅ Week breakdown · ✅ System vs Non-System
+                </div>
+            </div>""", unsafe_allow_html=True)
+            with st.spinner("Generating Weekly PDF…"):
+                try:
+                    import pdf_report
+                    weekly_pdf = pdf_report.build_pdf_weekly(fdf, uploaded_files, within_threshold)
+                    st.download_button("⬇️ Download Weekly PDF", weekly_pdf,
+                                       "LCY3_Weekly_Report.pdf", "application/pdf",
+                                       use_container_width=True)
+                except Exception as e:
+                    st.error(f"PDF generation failed: {e}")
+
+        st.markdown("<br>", unsafe_allow_html=True)
         st.info("💡 Reports reflect your current filter selections. Adjust filters on any tab, then download.")
 
     # ── Tab: History ──────────────────────────────────────────────────────────
