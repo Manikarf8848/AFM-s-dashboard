@@ -465,7 +465,7 @@ def donut_chart(df, col, title):
                  color_discrete_sequence=px.colors.qualitative.Set2)
     fig.update_traces(textinfo="percent+label", pull=[0.03] * len(counts))
     fig.add_annotation(text=f"{total:,}", x=0.5, y=0.5, font_size=22,
-                       font_color="#1a237e", showarrow=False, font=dict(weight=700))
+                       font_color="#1a237e", showarrow=False,)
     fig.update_layout(showlegend=True, title=title, height=340,
                       legend=dict(orientation="h", yanchor="bottom", y=-0.35),
                       margin=dict(t=40, b=10, l=0, r=0))
