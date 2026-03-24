@@ -947,7 +947,6 @@ if uploaded_files:
         with c2:
             st.plotly_chart(hbar_chart(fdf, "Resolver", "Avg Resolve Time by Resolver"), use_container_width=True)
 
-─────────────────────────────────────────
     # ── Tab: AFM General ──────────────────────────────────────────────────────
 with tab["📋 AFM General"]:
 
