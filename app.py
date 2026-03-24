@@ -953,6 +953,133 @@ if uploaded_files:
         st.markdown('<div class="sec-title">Number of Andons and Dwell Time by Date × Andon Type</div>', unsafe_allow_html=True)
         tbl_at = build_group_pivot(fdf, "Andon Type")
         st.dataframe(apply_pivot_style(tbl_at), use_container_width=True, height=400)
+
+        # ── ADD THIS BLOCK in app.py, right after this line: ──────────────────────────
+#   st.dataframe(afm_styler, use_container_width=True, height=430)
+# and BEFORE the line:
+#   c1, c2 = st.columns(2)
+# ──────────────────────────────────────────────────────────────────────────────
+
+        # ── Download AFM Performance table as Excel ────────────────────────────
+        import io as _io
+        from openpyxl import Workbook as _WB
+        from openpyxl.styles import PatternFill as _PF, Font as _FN, Alignment as _AL, Border as _BD, Side as _SD
+        from openpyxl.utils import get_column_letter as _gcl
+
+        def _build_afm_excel(tbl, dwell_cols):
+            wb = _WB()
+            ws = wb.active
+            ws.title = "AFM Performance"
+
+            HDR  = _PF("solid", fgColor="1A237E")
+            HFNT = _FN(color="FFFFFF", bold=True, size=9)
+            GRN  = _PF("solid", fgColor="E8EAF6")
+            GFNT = _FN(color="1A237E", bold=True, size=9)
+            RED  = _PF("solid", fgColor="D32F2F")
+            ORG  = _PF("solid", fgColor="F57C00")
+            GRE  = _PF("solid", fgColor="388E3C")
+            YEL  = _PF("solid", fgColor="FFD600")
+            LGR  = _PF("solid", fgColor="81C784")
+            WFT  = _FN(color="FFFFFF", bold=True, size=9)
+            BFT  = _FN(color="000000", bold=True, size=9)
+            NFT  = _FN(size=9)
+            THIN = _SD(style="thin", color="C5CAE9")
+            BDR  = _BD(left=THIN, right=THIN, top=THIN, bottom=THIN)
+            CTR  = _AL(horizontal="center", vertical="center")
+
+            # Row 1: Resolver header + merged andon type names
+            c0 = ws.cell(row=1, column=1, value="Resolver")
+            c0.fill=HDR; c0.font=HFNT; c0.alignment=CTR; c0.border=BDR
+
+            col = 2
+            col_map = {}
+            cats_seen = {}
+            for (cat, sub) in tbl.columns:
+                col_map[(cat, sub)] = col
+                if cat not in cats_seen:
+                    cats_seen[cat] = col
+                col += 1
+
+            for cat, start_col in cats_seen.items():
+                sub_count = sum(1 for (c2, s) in tbl.columns if c2 == cat)
+                end_col = start_col + sub_count - 1
+                if start_col == end_col:
+                    cell = ws.cell(row=1, column=start_col, value=cat)
+                else:
+                    ws.merge_cells(start_row=1, start_column=start_col,
+                                   end_row=1, end_column=end_col)
+                    cell = ws.cell(row=1, column=start_col, value=cat)
+                cell.fill=HDR; cell.font=HFNT; cell.alignment=CTR; cell.border=BDR
+
+            # Row 2: sub-headers (Andon Count / Dwell Time Avg)
+            c2h = ws.cell(row=2, column=1, value="Resolver")
+            c2h.fill=HDR; c2h.font=HFNT; c2h.alignment=CTR; c2h.border=BDR
+            for (cat, sub), col_n in col_map.items():
+                cell = ws.cell(row=2, column=col_n, value=sub)
+                cell.fill=HDR; cell.font=HFNT; cell.alignment=CTR; cell.border=BDR
+
+            # Data rows
+            data_rows = [i for i in tbl.index if i != "Grand Total"]
+            for r_idx, resolver in enumerate(list(tbl.index), 3):
+                is_grand = resolver == "Grand Total"
+                cell = ws.cell(row=r_idx, column=1, value=resolver)
+                cell.border = BDR
+                if is_grand:
+                    cell.fill=GRN; cell.font=GFNT
+                else:
+                    cell.font=NFT
+
+                for (cat, sub), col_n in col_map.items():
+                    raw = tbl.loc[resolver, (cat, sub)]
+                    try:
+                        val = float(raw) if not pd.isna(raw) else None
+                    except Exception:
+                        val = None
+                    cell = ws.cell(row=r_idx, column=col_n, value=val)
+                    cell.border=BDR; cell.alignment=CTR
+                    if is_grand:
+                        cell.fill=GRN; cell.font=GFNT
+                    else:
+                        cell.font=NFT
+                        if (cat, sub) in dwell_cols and val is not None:
+                            series_vals = [
+                                float(tbl.loc[i, (cat, sub)])
+                                for i in data_rows
+                                if not pd.isna(tbl.loc[i, (cat, sub)])
+                            ]
+                            if len(series_vals) >= 2:
+                                mn, mx = min(series_vals), max(series_vals)
+                                if mx != mn:
+                                    norm = (val - mn) / (mx - mn)
+                                    if norm >= 0.85:   cell.fill=RED; cell.font=WFT
+                                    elif norm >= 0.65: cell.fill=ORG; cell.font=BFT
+                                    elif norm >= 0.45: cell.fill=YEL; cell.font=BFT
+                                    elif norm >= 0.2:  cell.fill=LGR; cell.font=BFT
+                                    else:              cell.fill=GRE; cell.font=WFT
+
+            # Auto column widths
+            for col_obj in ws.columns:
+                max_len = 0
+                cl = _gcl(col_obj[0].column)
+                for cell in col_obj:
+                    try: max_len = max(max_len, len(str(cell.value or "")))
+                    except: pass
+                ws.column_dimensions[cl].width = min(max_len + 3, 30)
+
+            buf = _io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            return buf.getvalue()
+
+        afm_excel = _build_afm_excel(afm_tbl, set(dwell_cs))
+        st.download_button(
+            "⬇️ Download AFM Performance Table (.xlsx)",
+            afm_excel,
+            "AFM_Performance.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            key="afm_perf_dl"
+        )
         c1, c2 = st.columns(2)
         with c1:
             st.plotly_chart(donut_chart(fdf, "Andon Type", "Andons by Type"), use_container_width=True)
