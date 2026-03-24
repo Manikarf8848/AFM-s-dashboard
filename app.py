@@ -963,146 +963,107 @@ if uploaded_files:
 
     # ── Tab: AFM General ──────────────────────────────────────────────────────
         # ── Tab: AFM General ──────────────────────────────────────────────────────
+        # ── Tab: AFM General ──────────────────────────────────────────────────────
     with tab["📋 AFM General"]:
-        # 1. DATA CLEANING & STANDARDIZATION
+        # 1. STANDARDIZE DATA (Fixes the "0" values)
         gen_fdf = fdf.copy()
         if "Blocking" in gen_fdf.columns:
-            # Fixes the "0" values by making sure 'Yes' is recognized
+            # Ensures 'yes', 'YES', or 'True' are all read as 'Yes'
             gen_fdf["Blocking"] = gen_fdf["Blocking"].astype(str).str.strip().str.capitalize()
             gen_fdf["Blocking"] = gen_fdf["Blocking"].replace({"True": "Yes", "False": "No", "Y": "Yes", "N": "No"})
         
         st.markdown('<div class="sec-title">📋 AFM General Performance</div>', unsafe_allow_html=True)
 
-        # 2. FILTERS (Hide/Unhide Resolvers)
+        # 2. FILTERS
         gf1, gf2 = st.columns(2)
         with gf1:
-            h_res = st.multiselect("Hide Resolvers", options=sorted(gen_fdf["Resolver"].unique()), key="gen_h")
+            h_res = st.multiselect("Hide Resolvers", options=sorted(gen_fdf["Resolver"].unique()), key="gen_h_v2")
         with gf2:
-            s_res = st.multiselect("Show Only These", options=sorted(gen_fdf["Resolver"].unique()), key="gen_s")
+            s_res = st.multiselect("Show Only These", options=sorted(gen_fdf["Resolver"].unique()), key="gen_s_v2")
 
         if s_res:
             gen_fdf = gen_fdf[gen_fdf["Resolver"].isin(s_res)]
         elif h_res:
             gen_fdf = gen_fdf[~gen_fdf["Resolver"].isin(h_res)]
 
-        # 3. CATEGORY SPLITTING (Ensures Amnesty/DLC are separate from Non-Blocking)
-        NON_BLOCKING_EXCLUDE = [
+        # 3. CATEGORY LOGIC (Separates Amnesty/DLC from Non-Blocking)
+        NON_BLOCK_EXCLUDE = [
             "Replace Fiducial", "Untrusted Fiducial Barcode", "Out of Work", 
             "Product Problem", "Unreachable Charger", "Drive Unit:Repeated Offenders: Pod Barcode Failed", 
             "Pod Repeated Offender Replace Pod Fiducial"
         ]
 
+        # Definitions based on your requirements
         blocking_df = gen_fdf[gen_fdf["Blocking"] == "Yes"]
         amnesty_df  = gen_fdf[gen_fdf["Andon Type"] == "Amnesty"]
         dlc_df      = gen_fdf[gen_fdf["Andon Type"] == "Drive Lacking Capability"]
         
-        # This sums all other remaining non-blocking into one "Non-Blocking" category
+        # Non-Blocking = No Blocking AND Not Amnesty AND Not DLC AND Not Excluded
         nonblock_df = gen_fdf[
             (gen_fdf["Blocking"] == "No") & 
             (gen_fdf["Andon Type"] != "Amnesty") & 
             (gen_fdf["Andon Type"] != "Drive Lacking Capability") &
-            (~gen_fdf["Andon Type"].isin(NON_BLOCKING_EXCLUDE))
+            (~gen_fdf["Andon Type"].isin(NON_BLOCK_EXCLUDE))
         ]
 
-        # 4. BUILD TABLE DATA
-        def get_stats(df_sub, res_name):
+        # 4. TABLE BUILDING
+        def get_row_stats(df_sub, res_name):
             r = df_sub[df_sub["Resolver"] == res_name]
             cnt = len(r)
             avg = round(r["Resolve_Min"].mean(), 2) if cnt > 0 else None
             return cnt, avg
 
         all_res = sorted(gen_fdf["Resolver"].unique())
-        rows = {}
-        for res in all_res:
-            c1, a1 = get_stats(blocking_df, res)
-            c2, a2 = get_stats(amnesty_df, res)
-            c3, a3 = get_stats(dlc_df, res)
-            c4, a4 = get_stats(nonblock_df, res)
-            rows[res] = {
-                ("Blocking", "Count"): c1, ("Blocking", "Avg"): a1,
-                ("Amnesty", "Count"): c2, ("Amnesty", "Avg"): a2,
-                ("Drive Lacking", "Count"): c3, ("Drive Lacking", "Avg"): a3,
-                ("Non-Blocking", "Count"): c4, ("Non-Blocking", "Avg"): a4
-            }
+        rows = {res: {
+            ("Blocking", "Count"): get_row_stats(blocking_df, res)[0],
+            ("Blocking", "Avg"):   get_row_stats(blocking_df, res)[1],
+            ("Amnesty", "Count"):  get_row_stats(amnesty_df, res)[0],
+            ("Amnesty", "Avg"):    get_row_stats(amnesty_df, res)[1],
+            ("Drive Lacking", "Count"): get_row_stats(dlc_df, res)[0],
+            ("Drive Lacking", "Avg"):   get_row_stats(dlc_df, res)[1],
+            ("Non-Blocking", "Count"):  get_row_stats(nonblock_df, res)[0],
+            ("Non-Blocking", "Avg"):    get_row_stats(nonblock_df, res)[1]
+        } for res in all_res}
         
         gen_tbl = pd.DataFrame(rows).T
-        gen_tbl.index.name = "Resolver"
         gen_tbl.columns = pd.MultiIndex.from_tuples(gen_tbl.columns)
 
-        # Grand Total Row
-        gt_row = pd.DataFrame({
-            ("Blocking", "Count"): [len(blocking_df)], ("Blocking", "Avg"): [round(blocking_df["Resolve_Min"].mean(), 2)],
-            ("Amnesty", "Count"): [len(amnesty_df)], ("Amnesty", "Avg"): [round(amnesty_df["Resolve_Min"].mean(), 2)],
-            ("Drive Lacking", "Count"): [len(dlc_df)], ("Drive Lacking", "Avg"): [round(dlc_df["Resolve_Min"].mean(), 2)],
-            ("Non-Blocking", "Count"): [len(nonblock_df)], ("Non-Blocking", "Avg"): [round(nonblock_df["Resolve_Min"].mean(), 2)]
-        }, index=["Grand Total"])
+        # Grand Total
+        gt_data = {
+            ("Blocking", "Count"): len(blocking_df), ("Blocking", "Avg"): round(blocking_df["Resolve_Min"].mean(), 2),
+            ("Amnesty", "Count"):  len(amnesty_df),  ("Amnesty", "Avg"):  round(amnesty_df["Resolve_Min"].mean(), 2),
+            ("Drive Lacking", "Count"): len(dlc_df), ("Drive Lacking", "Avg"): round(dlc_df["Resolve_Min"].mean(), 2),
+            ("Non-Blocking", "Count"):  len(nonblock_df), ("Non-Blocking", "Avg"): round(nonblock_df["Resolve_Min"].mean(), 2)
+        }
+        gt_row = pd.DataFrame(gt_data, index=["Grand Total"])
         gen_tbl = pd.concat([gt_row, gen_tbl])
 
-        # 5. STYLING (Heatmap Colors)
-        avg_cols = [c for c in gen_tbl.columns if c[1] == "Avg"]
-        def style_gen(data):
-            s = pd.DataFrame("", index=data.index, columns=data.columns)
-            d_rows = [i for i in data.index if i != "Grand Total"]
-            for col in avg_cols:
-                ser = data.loc[d_rows, col]
-                for idx in d_rows:
-                    val = data.loc[idx, col]
-                    if not pd.isna(val):
-                        s.loc[idx, col] = dwell_color(val, ser)
-            if "Grand Total" in data.index:
-                s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
-            return s
+        # 5. DISPLAY & DOWNLOAD
+        st.dataframe(gen_tbl.style.format("{:.2f}", na_rep="—"), use_container_width=True)
 
-        st.dataframe(gen_tbl.style.apply(style_gen, axis=None).format("{:.2f}", subset=avg_cols, na_rep="—"), use_container_width=True, height=400)
-
-        # 6. EXCEL DOWNLOAD BUTTON (With Colors)
+        # Excel Download Logic
         import io as _io
         from openpyxl import Workbook as _WB
-        from openpyxl.styles import PatternFill as _PF, Font as _FN, Alignment as _AL, Border as _BD, Side as _SD
+        
+        def quick_excel(tbl):
+            output = _io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                tbl.to_excel(writer, sheet_name='AFM_General')
+            return output.getvalue()
 
-        def _build_gen_excel(tbl):
-            wb = _WB(); ws = wb.active; ws.title = "AFM General"
-            HDR = _PF("solid", fgColor="1A237E"); HFNT = _FN(color="FFFFFF", bold=True)
-            GRN = _PF("solid", fgColor="E8EAF6"); GFNT = _FN(color="1A237E", bold=True)
-            BDR = _BD(left=_SD(style="thin"), right=_SD(style="thin"), top=_SD(style="thin"), bottom=_SD(style="thin"))
-            
-            # Write Headers
-            ws.cell(1, 1, "Resolver").fill=HDR; ws.cell(1, 1).font=HFNT
-            for i, (cat, sub) in enumerate(tbl.columns, 2):
-                ws.cell(1, i, f"{cat} ({sub})").fill=HDR; ws.cell(1, i).font=HFNT
-            
-            # Write Data
-            for r_idx, (idx_val, row) in enumerate(tbl.iterrows(), 2):
-                is_gt = (idx_val == "Grand Total")
-                c1 = ws.cell(r_idx, 1, str(idx_val))
-                c1.border=BDR
-                if is_gt: c1.fill=GRN; c1.font=GFNT
-                
-                for c_idx, val in enumerate(row, 2):
-                    cell = ws.cell(r_idx, c_idx, val)
-                    cell.border=BDR; cell.alignment=_AL(horizontal="center")
-                    if is_gt: cell.fill=GRN; cell.font=GFNT
+        st.download_button(
+            label="⬇️ Download AFM General Excel",
+            data=quick_excel(gen_tbl),
+            file_name="AFM_General_Report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
 
-            buf = _io.BytesIO(); wb.save(buf); return buf.getvalue()
-
-        st.download_button("📊 Download Formatted Excel", _build_gen_excel(gen_tbl), "AFM_General.xlsx", use_container_width=True)
-
-        # 7. HOURS LOST SECTION
+        # 6. HOURS LOST (At the bottom)
         st.markdown("---")
         st.subheader("⏱️ Hours Lost to Blocking Andons")
-        
-        # KPI Boxes
-        total_mins = blocking_df["Resolve_Min"].sum()
-        h1, h2 = st.columns(2)
-        h1.metric("Total Hours Lost", f"{total_mins/60:.2f} hrs")
-        h2.metric("Blocking Andon Count", f"{len(blocking_df):,}")
-
-        # Trend Chart
-        daily_lost = blocking_df.groupby("Date")["Resolve_Min"].sum() / 60
-        if not daily_lost.empty:
-            st.line_chart(daily_lost)
-        else:
-            st.info("No blocking data found for the trend chart.")
+        total_lost_hrs = blocking_df["Resolve_Min"].sum() / 60
+        st.metric("Total Hours Lost", f"{total_lost_hrs:.2f} hrs", delta=f"{len(blocking_df)} andons")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
