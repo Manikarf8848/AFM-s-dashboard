@@ -491,7 +491,7 @@ if uploaded_files:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    tab_names = ["🏆 Leaderboard", "👤 AFM Profile", "🔍 Root Cause", "AFM Performance", "By Andon Type", "Weekly Breakdown"]
+    tab_names = ["🏆 Leaderboard", "👤 AFM Profile", "🔍 Root Cause", "AFM Performance", "📋 AFM General", "By Andon Type", "Weekly Breakdown"]
     if optional_cols["Equipment Type"]: tab_names.append("By Equipment Type")
     if optional_cols["Zone"]:           tab_names.append("By Zone")
     if optional_cols["Shift"]:          tab_names.append("By Shift")
@@ -946,7 +946,444 @@ if uploaded_files:
             st.plotly_chart(donut_chart(fdf, "Resolver", "Andons by Resolver"), use_container_width=True)
         with c2:
             st.plotly_chart(hbar_chart(fdf, "Resolver", "Avg Resolve Time by Resolver"), use_container_width=True)
+# ══════════════════════════════════════════════════════════════════════════════
+# AFM GENERAL TAB  —  paste this entire block into your app.py
+#
+# STEP 1: Find this line in app.py:
+#   tab_names = ["🏆 Leaderboard", "👤 AFM Profile", "🔍 Root Cause", "AFM Performance", "By Andon Type", "Weekly Breakdown"]
+#
+# STEP 2: Change it to:
+#   tab_names = ["🏆 Leaderboard", "👤 AFM Profile", "🔍 Root Cause", "AFM Performance", "📋 AFM General", "By Andon Type", "Weekly Breakdown"]
+#
+# STEP 3: Find the line:
+#   # ── Tab: By Andon Type ────────────────────────────────────────────────────
+#
+# STEP 4: Paste this entire block ABOVE that line
+# ══════════════════════════════════════════════════════════════════════════════
 
+    # ── Tab: AFM General ──────────────────────────────────────────────────────
+    with tab["📋 AFM General"]:
+
+        # ── Constants ─────────────────────────────────────────────────────────
+        BLOCKING_ANDONS = ["Amnesty", "Drive Lacking Capability"]
+
+        NON_BLOCKING_EXCLUDE = [
+            "Replace Fiducial",
+            "Untrusted Fiducial Barcode",
+            "Out of Work",
+            "Product Problem",
+            "Unreachable Charger",
+            "Drive Unit:Repeated Offenders: Pod Barcode Failed",
+            "Pod Repeated Offender Replace Pod Fiducial",
+        ]
+
+        # ── Filters ───────────────────────────────────────────────────────────
+        st.markdown('<div class="sec-title">📋 AFM General — Blocking & Non-Blocking Performance</div>', unsafe_allow_html=True)
+
+        gf1, gf2 = st.columns([2, 2])
+        with gf1:
+            gen_hidden_resolvers = st.multiselect(
+                "Hide Resolvers",
+                options=sorted(fdf["Resolver"].unique().tolist()),
+                default=[],
+                key="gen_hide_resolvers",
+                help="Select resolvers to HIDE from this table"
+            )
+        with gf2:
+            gen_show_resolvers = st.multiselect(
+                "Show Only These Resolvers",
+                options=sorted(fdf["Resolver"].unique().tolist()),
+                default=[],
+                key="gen_show_resolvers",
+                help="Select specific resolvers to show ONLY these"
+            )
+
+        # Apply resolver filter
+        if gen_show_resolvers:
+            gen_fdf = fdf[fdf["Resolver"].isin(gen_show_resolvers)].copy()
+            st.caption(f"Showing only: {', '.join(gen_show_resolvers)} · {len(gen_fdf):,} records")
+        elif gen_hidden_resolvers:
+            gen_fdf = fdf[~fdf["Resolver"].isin(gen_hidden_resolvers)].copy()
+            st.caption(f"Hiding: {', '.join(gen_hidden_resolvers)} · {len(gen_fdf):,} records shown")
+        else:
+            gen_fdf = fdf.copy()
+
+        all_resolvers_gen = sorted(gen_fdf["Resolver"].unique())
+
+        # ── Build the summary table ────────────────────────────────────────────
+        # For each resolver: count + avg for each column category
+
+        def _gen_stats(df_sub, resolver):
+            """Return (count, avg_min) for a resolver subset."""
+            r = df_sub[df_sub["Resolver"] == resolver]
+            cnt = len(r)
+            avg = round(r["Resolve_Min"].mean(), 2) if cnt > 0 else None
+            return cnt, avg
+
+        # Split data into categories
+        amnesty_df    = gen_fdf[gen_fdf["Andon Type"] == "Amnesty"]
+        dlc_df        = gen_fdf[gen_fdf["Andon Type"] == "Drive Lacking Capability"]
+        blocking_df   = gen_fdf[gen_fdf["Andon Type"].isin(BLOCKING_ANDONS)]
+        nonblock_df   = gen_fdf[
+            (~gen_fdf["Andon Type"].isin(BLOCKING_ANDONS)) &
+            (~gen_fdf["Andon Type"].isin(NON_BLOCKING_EXCLUDE))
+        ]
+
+        # Build multi-level columns
+        gen_cols = {}
+        for resolver in all_resolvers_gen:
+            c_am, a_am   = _gen_stats(amnesty_df, resolver)
+            c_dlc, a_dlc = _gen_stats(dlc_df, resolver)
+            c_bl, a_bl   = _gen_stats(blocking_df, resolver)
+            c_nb, a_nb   = _gen_stats(nonblock_df, resolver)
+            total_cnt    = c_am + c_dlc + c_nb
+            total_avg    = round(
+                gen_fdf[gen_fdf["Resolver"] == resolver]["Resolve_Min"].mean(), 2
+            ) if len(gen_fdf[gen_fdf["Resolver"] == resolver]) > 0 else None
+
+            gen_cols[resolver] = {
+                ("Amnesty",               "Count"):    c_am,
+                ("Amnesty",               "Avg (min)"): a_am,
+                ("Drive Lacking Cap.",     "Count"):    c_dlc,
+                ("Drive Lacking Cap.",     "Avg (min)"): a_dlc,
+                ("All Blocking",          "Count"):    c_bl,
+                ("All Blocking",          "Avg (min)"): a_bl,
+                ("Non-Blocking",          "Count"):    c_nb,
+                ("Non-Blocking",          "Avg (min)"): a_nb,
+                ("Total",                 "Count"):    total_cnt,
+                ("Total",                 "Avg (min)"): total_avg,
+            }
+
+        gen_tbl = pd.DataFrame(gen_cols).T
+        gen_tbl.index.name = "Resolver"
+        gen_tbl.columns = pd.MultiIndex.from_tuples(gen_tbl.columns)
+
+        # Grand total row
+        def _grand(sub_df):
+            cnt = len(sub_df)
+            avg = round(sub_df["Resolve_Min"].mean(), 2) if cnt > 0 else None
+            return cnt, avg
+
+        c_am_g, a_am_g     = _grand(amnesty_df)
+        c_dlc_g, a_dlc_g   = _grand(dlc_df)
+        c_bl_g, a_bl_g     = _grand(blocking_df)
+        c_nb_g, a_nb_g     = _grand(nonblock_df)
+        c_tot_g            = len(gen_fdf[~gen_fdf["Andon Type"].isin(NON_BLOCKING_EXCLUDE)])
+        a_tot_g            = round(gen_fdf["Resolve_Min"].mean(), 2)
+
+        grand_gen = pd.DataFrame({
+            ("Amnesty",           "Count"):    [c_am_g],
+            ("Amnesty",           "Avg (min)"): [a_am_g],
+            ("Drive Lacking Cap.","Count"):    [c_dlc_g],
+            ("Drive Lacking Cap.","Avg (min)"): [a_dlc_g],
+            ("All Blocking",      "Count"):    [c_bl_g],
+            ("All Blocking",      "Avg (min)"): [a_bl_g],
+            ("Non-Blocking",      "Count"):    [c_nb_g],
+            ("Non-Blocking",      "Avg (min)"): [a_nb_g],
+            ("Total",             "Count"):    [c_tot_g],
+            ("Total",             "Avg (min)"): [a_tot_g],
+        }, index=["Grand Total"])
+        grand_gen.columns = pd.MultiIndex.from_tuples(grand_gen.columns)
+        gen_tbl = pd.concat([grand_gen, gen_tbl])
+
+        # ── Style the table ────────────────────────────────────────────────────
+        avg_gen_cols = [c for c in gen_tbl.columns if c[1] == "Avg (min)"]
+        blocking_avg_cols = [
+            ("Amnesty", "Avg (min)"),
+            ("Drive Lacking Cap.", "Avg (min)"),
+            ("All Blocking", "Avg (min)"),
+        ]
+
+        def _style_gen(data):
+            s = pd.DataFrame("", index=data.index, columns=data.columns)
+            data_rows = [i for i in data.index if i != "Grand Total"]
+
+            for col in avg_gen_cols:
+                if col not in data.columns:
+                    continue
+                ser = data.loc[data_rows, col]
+                for idx in data_rows:
+                    val = data.loc[idx, col]
+                    # Use threshold-based colouring for blocking, heat for non-blocking
+                    if col in blocking_avg_cols:
+                        t = THRESHOLDS.get(col[0].replace("All Blocking", "").strip(), DEFAULT_THRESHOLD)
+                        if col[0] == "All Blocking":
+                            t = DEFAULT_THRESHOLD
+                        if pd.isna(val) or val is None:
+                            pass
+                        elif val > t * 1.5:
+                            s.loc[idx, col] = "background-color: rgb(210,40,40); color:white; font-weight:700"
+                        elif val > t:
+                            s.loc[idx, col] = "background-color: rgb(255,140,0); color:black; font-weight:700"
+                        else:
+                            s.loc[idx, col] = "background-color: rgb(60,180,60); color:white; font-weight:700"
+                    else:
+                        s.loc[idx, col] = dwell_color(val, ser)
+
+            if "Grand Total" in data.index:
+                s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
+            return s
+
+        gen_styler = (gen_tbl.style.apply(_style_gen, axis=None)
+            .format({c: "{:.2f}" for c in gen_tbl.columns if c[1] == "Avg (min)"}, na_rep="—")
+            .format({c: "{:,.0f}" for c in gen_tbl.columns if c[1] == "Count"}, na_rep="—"))
+
+        st.dataframe(gen_styler, use_container_width=True, height=450)
+
+        # ── Hours Lost Banner ──────────────────────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="sec-title">⏱️ Hours Lost to Blocking Andons Today</div>', unsafe_allow_html=True)
+
+        today = gen_fdf["Date"].max()
+        today_blocking = gen_fdf[
+            (gen_fdf["Date"] == today) &
+            (gen_fdf["Andon Type"].isin(BLOCKING_ANDONS))
+        ]
+        total_blocking_min = today_blocking["Resolve_Min"].sum()
+        total_blocking_hrs = total_blocking_min / 60
+        amnesty_min  = today_blocking[today_blocking["Andon Type"] == "Amnesty"]["Resolve_Min"].sum()
+        dlc_min      = today_blocking[today_blocking["Andon Type"] == "Drive Lacking Capability"]["Resolve_Min"].sum()
+        blocking_cnt = len(today_blocking)
+
+        hl1, hl2, hl3, hl4 = st.columns(4)
+        for box, lbl, val, sub, color in [
+            (hl1, "Total Hours Lost",       f"{total_blocking_hrs:.2f} hrs",  f"{total_blocking_min:.0f} min total",    "#ef5350"),
+            (hl2, "Amnesty Hours Lost",     f"{amnesty_min/60:.2f} hrs",      f"{amnesty_min:.0f} min",                 "#ffa726"),
+            (hl3, "Drive Lacking Cap. Lost",f"{dlc_min/60:.2f} hrs",          f"{dlc_min:.0f} min",                     "#ffa726"),
+            (hl4, "Blocking Andon Count",   f"{blocking_cnt:,}",              f"on {str(today)}",                       "#3949ab"),
+        ]:
+            box.markdown(f"""
+            <div class="kpi-box" style="border-top-color:{color};">
+                <div class="kpi-label">{lbl}</div>
+                <div class="kpi-value" style="font-size:1.6rem;color:{color};">{val}</div>
+                <div class="kpi-sub">{sub}</div>
+            </div>""", unsafe_allow_html=True)
+
+        # Weekly hours lost trend
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="sec-title">📅 Hours Lost to Blocking Andons — Daily Trend</div>', unsafe_allow_html=True)
+
+        daily_blocking = (
+            gen_fdf[gen_fdf["Andon Type"].isin(BLOCKING_ANDONS)]
+            .groupby(["Date", "Andon Type"])["Resolve_Min"].sum()
+            .reset_index()
+        )
+        daily_blocking["Hours Lost"] = (daily_blocking["Resolve_Min"] / 60).round(2)
+
+        if not daily_blocking.empty:
+            fig_hl = go.Figure()
+            colors_hl = {"Amnesty": "#ffa726", "Drive Lacking Capability": "#ef5350"}
+            for atype in BLOCKING_ANDONS:
+                sub_hl = daily_blocking[daily_blocking["Andon Type"] == atype]
+                fig_hl.add_trace(go.Bar(
+                    x=sub_hl["Date"].astype(str),
+                    y=sub_hl["Hours Lost"],
+                    name=atype,
+                    marker_color=colors_hl.get(atype, "#3949ab"),
+                    text=sub_hl["Hours Lost"].round(2),
+                    textposition="outside"
+                ))
+            fig_hl.update_layout(
+                barmode="stack", height=320,
+                xaxis_title="Date", yaxis_title="Hours Lost",
+                legend=dict(orientation="h", y=-0.3),
+                margin=dict(t=20, b=40, l=0, r=0),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig_hl, use_container_width=True)
+        else:
+            st.info("No blocking andons found in the current date range.")
+
+        # ── Download Excel ─────────────────────────────────────────────────────
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="sec-title">⬇️ Download</div>', unsafe_allow_html=True)
+
+        import io as _io2
+        from openpyxl import Workbook as _WB2
+        from openpyxl.styles import PatternFill as _PF2, Font as _FN2, Alignment as _AL2, Border as _BD2, Side as _SD2
+        from openpyxl.utils import get_column_letter as _gcl2
+
+        def _build_gen_excel(tbl):
+            wb = _WB2()
+            ws = wb.active
+            ws.title = "AFM General"
+
+            HDR   = _PF2("solid", fgColor="1A237E")
+            HFNT  = _FN2(color="FFFFFF", bold=True, size=9)
+            GRFIL = _PF2("solid", fgColor="E8EAF6")
+            GRFNT = _FN2(color="1A237E", bold=True, size=9)
+            RED   = _PF2("solid", fgColor="D32F2F")
+            ORG   = _PF2("solid", fgColor="F57C00")
+            GRE   = _PF2("solid", fgColor="388E3C")
+            YEL   = _PF2("solid", fgColor="FFD600")
+            LGR   = _PF2("solid", fgColor="81C784")
+            WFT   = _FN2(color="FFFFFF", bold=True, size=9)
+            BFT   = _FN2(color="000000", bold=True, size=9)
+            NFT   = _FN2(size=9)
+            THIN  = _SD2(style="thin", color="C5CAE9")
+            BDR   = _BD2(left=THIN, right=THIN, top=THIN, bottom=THIN)
+            CTR   = _AL2(horizontal="center", vertical="center")
+
+            # Row 1: Resolver + merged category headers
+            ws.cell(row=1, column=1, value="Resolver").fill=HDR
+            ws.cell(row=1, column=1).font=HFNT
+            ws.cell(row=1, column=1).alignment=CTR
+            ws.cell(row=1, column=1).border=BDR
+
+            col = 2
+            col_map = {}
+            cats_seen = {}
+            for (cat, sub) in tbl.columns:
+                col_map[(cat, sub)] = col
+                if cat not in cats_seen:
+                    cats_seen[cat] = col
+                col += 1
+
+            for cat, start_col in cats_seen.items():
+                sub_count = sum(1 for (c2, s) in tbl.columns if c2 == cat)
+                end_col = start_col + sub_count - 1
+                if start_col != end_col:
+                    ws.merge_cells(start_row=1, start_column=start_col,
+                                   end_row=1, end_column=end_col)
+                cell = ws.cell(row=1, column=start_col, value=cat)
+                cell.fill=HDR; cell.font=HFNT; cell.alignment=CTR; cell.border=BDR
+
+            # Row 2: sub-headers
+            ws.cell(row=2, column=1, value="Resolver").fill=HDR
+            ws.cell(row=2, column=1).font=HFNT
+            ws.cell(row=2, column=1).alignment=CTR
+            ws.cell(row=2, column=1).border=BDR
+            for (cat, sub), col_n in col_map.items():
+                cell = ws.cell(row=2, column=col_n, value=sub)
+                cell.fill=HDR; cell.font=HFNT; cell.alignment=CTR; cell.border=BDR
+
+            # Data rows
+            data_rows = [i for i in tbl.index if i != "Grand Total"]
+            blocking_thresh = {"Amnesty": 10, "Drive Lacking Cap.": 10, "All Blocking": DEFAULT_THRESHOLD}
+
+            for r_idx, resolver in enumerate(list(tbl.index), 3):
+                is_grand = resolver == "Grand Total"
+                cell = ws.cell(row=r_idx, column=1, value=resolver)
+                cell.border=BDR
+                if is_grand:
+                    cell.fill=GRFIL; cell.font=GRFNT
+                else:
+                    cell.font=NFT
+
+                for (cat, sub), col_n in col_map.items():
+                    raw = tbl.loc[resolver, (cat, sub)]
+                    try:
+                        val = float(raw) if not pd.isna(raw) else None
+                    except Exception:
+                        val = None
+                    cell = ws.cell(row=r_idx, column=col_n, value=val)
+                    cell.border=BDR; cell.alignment=CTR
+                    if is_grand:
+                        cell.fill=GRFIL; cell.font=GRFNT
+                    elif sub == "Avg (min)" and val is not None:
+                        if cat in blocking_thresh:
+                            t = blocking_thresh[cat]
+                            if val > t * 1.5:   cell.fill=RED; cell.font=WFT
+                            elif val > t:        cell.fill=ORG; cell.font=BFT
+                            else:                cell.fill=GRE; cell.font=WFT
+                        else:
+                            ser_vals = [
+                                float(tbl.loc[i, (cat, sub)])
+                                for i in data_rows
+                                if not pd.isna(tbl.loc[i, (cat, sub)])
+                            ]
+                            if len(ser_vals) >= 2:
+                                mn, mx = min(ser_vals), max(ser_vals)
+                                if mx != mn:
+                                    norm = (val - mn) / (mx - mn)
+                                    if norm >= 0.85:   cell.fill=RED; cell.font=WFT
+                                    elif norm >= 0.65: cell.fill=ORG; cell.font=BFT
+                                    elif norm >= 0.45: cell.fill=YEL; cell.font=BFT
+                                    elif norm >= 0.2:  cell.fill=LGR; cell.font=BFT
+                                    else:              cell.fill=GRE; cell.font=WFT
+                    else:
+                        cell.font=NFT
+
+            # Auto width
+            for col_obj in ws.columns:
+                max_len = 0
+                cl = _gcl2(col_obj[0].column)
+                for cell in col_obj:
+                    try: max_len = max(max_len, len(str(cell.value or "")))
+                    except: pass
+                ws.column_dimensions[cl].width = min(max_len + 3, 30)
+
+            # Second sheet: Hours Lost
+            ws2 = wb.create_sheet("Hours Lost")
+            ws2.cell(row=1, column=1, value="Date").fill=HDR
+            ws2.cell(row=1, column=1).font=HFNT
+            ws2.cell(row=1, column=2, value="Andon Type").fill=HDR
+            ws2.cell(row=1, column=2).font=HFNT
+            ws2.cell(row=1, column=3, value="Total Minutes Lost").fill=HDR
+            ws2.cell(row=1, column=3).font=HFNT
+            ws2.cell(row=1, column=4, value="Hours Lost").fill=HDR
+            ws2.cell(row=1, column=4).font=HFNT
+            ws2.cell(row=1, column=5, value="Blocking Count").fill=HDR
+            ws2.cell(row=1, column=5).font=HFNT
+
+            daily_bl = (
+                gen_fdf[gen_fdf["Andon Type"].isin(BLOCKING_ANDONS)]
+                .groupby(["Date", "Andon Type"])
+                .agg(Minutes=("Resolve_Min", "sum"), Count=("Resolve_Min", "count"))
+                .reset_index()
+            )
+            daily_bl["Hours"] = (daily_bl["Minutes"] / 60).round(2)
+            daily_bl["Minutes"] = daily_bl["Minutes"].round(2)
+
+            for r, row in daily_bl.iterrows():
+                ws2.cell(row=r+2, column=1, value=str(row["Date"]))
+                ws2.cell(row=r+2, column=2, value=row["Andon Type"])
+                ws2.cell(row=r+2, column=3, value=row["Minutes"])
+                ws2.cell(row=r+2, column=4, value=row["Hours"])
+                ws2.cell(row=r+2, column=5, value=int(row["Count"]))
+
+            for col_obj in ws2.columns:
+                max_len = 0
+                cl = _gcl2(col_obj[0].column)
+                for cell in col_obj:
+                    try: max_len = max(max_len, len(str(cell.value or "")))
+                    except: pass
+                ws2.column_dimensions[cl].width = min(max_len + 4, 30)
+
+            buf = _io2.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            return buf.getvalue()
+
+        dl_g1, dl_g2 = st.columns(2)
+        with dl_g1:
+            gen_excel = _build_gen_excel(gen_tbl)
+            st.download_button(
+                "⬇️ Download AFM General Table (.xlsx)",
+                gen_excel,
+                "AFM_General.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                key="gen_excel_dl"
+            )
+        with dl_g2:
+            try:
+                import pdf_report as _prg
+                gen_pdf = _prg.build_pdf_daily(fdf, uploaded_files, within_threshold)
+                st.download_button(
+                    "⬇️ Download PDF Report",
+                    gen_pdf,
+                    "LCY3_AFM_General.pdf",
+                    "application/pdf",
+                    use_container_width=True,
+                    key="gen_pdf_dl"
+                )
+            except Exception:
+                st.caption("Add pdf_report.py to enable PDF export")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# END OF AFM GENERAL TAB
+# ══════════════════════════════════════════════════════════════════════════════
     # ── Tab: By Andon Type ────────────────────────────────────────────────────
     with tab["By Andon Type"]:
         _pdf_download_bar("by_andon_type")
