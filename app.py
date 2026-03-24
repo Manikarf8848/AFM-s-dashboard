@@ -947,8 +947,6 @@ if uploaded_files:
         with c2:
             st.plotly_chart(hbar_chart(fdf, "Resolver", "Avg Resolve Time by Resolver"), use_container_width=True)
 
-    # ── Tab: AFM General ──────────────────────────────────────────────────────
-    # --- Tab: AFM General ------------------------------------------------------
     # --- Tab: AFM General ------------------------------------------------------
     with tab["📋 AFM General"]:
 
@@ -980,7 +978,7 @@ if uploaded_files:
             else:
                 gen_fdf = fdf.copy()
 
-            # Robust cleaning for your exact data ("yes"/"no")
+            # Robust cleaning
             gen_fdf = gen_fdf.copy()
             gen_fdf["Blocking_clean"] = (
                 gen_fdf["Blocking"]
@@ -992,15 +990,15 @@ if uploaded_files:
             )
             gen_fdf["Andon_Type_clean"] = gen_fdf["Andon Type"].astype(str).str.strip()
 
-            # Split categories
-            obstruction_df = gen_fdf[gen_fdf["Andon_Type_clean"] == "Obstruction"].copy()
+            # Split categories - using your actual names
+            amnesty_df     = gen_fdf[gen_fdf["Andon_Type_clean"] == "Amnesty"].copy()
             dlc_df         = gen_fdf[gen_fdf["Andon_Type_clean"] == "Drive Lacking Capability"].copy()
             blocking_df    = gen_fdf[gen_fdf["Blocking_clean"] == "YES"].copy()
 
             nonblock_df = gen_fdf[
                 (gen_fdf["Blocking_clean"] == "NO") &
                 (~gen_fdf["Andon_Type_clean"].isin([x.strip() for x in NON_BLOCKING_EXCLUDE])) &
-                (~gen_fdf["Andon_Type_clean"].isin(["Obstruction", "Drive Lacking Capability", "Amnesty"]))
+                (~gen_fdf["Andon_Type_clean"].isin(["Amnesty", "Drive Lacking Capability"]))
             ].copy()
 
             all_resolvers = sorted(gen_fdf["Resolver"].dropna().unique())
@@ -1013,7 +1011,7 @@ if uploaded_files:
 
             rows = {}
             for res in all_resolvers:
-                c_obs, a_obs = _stats(obstruction_df, res)
+                c_am,  a_am  = _stats(amnesty_df, res)
                 c_dlc, a_dlc = _stats(dlc_df, res)
                 c_blk, a_blk = _stats(blocking_df, res)
                 c_nb,  a_nb  = _stats(nonblock_df, res)
@@ -1023,8 +1021,8 @@ if uploaded_files:
                 a_tot = round(r_all["Resolve_Min"].mean(), 2) if c_tot > 0 else None
 
                 rows[res] = {
-                    ("Obstruction", "Andon Count"): c_obs,
-                    ("Obstruction", "Dwell Time Average"): a_obs,
+                    ("Amnesty", "Andon Count"): c_am,
+                    ("Amnesty", "Dwell Time Average"): a_am,
                     ("Drive Lacking Capability", "Andon Count"): c_dlc,
                     ("Drive Lacking Capability", "Dwell Time Average"): a_dlc,
                     ("Blocking Andons", "Andon Count"): c_blk,
@@ -1043,8 +1041,8 @@ if uploaded_files:
                 return len(df), round(df["Resolve_Min"].mean(), 2) if len(df) > 0 else None
 
             grand = {
-                ("Obstruction", "Andon Count"): _grand(obstruction_df)[0],
-                ("Obstruction", "Dwell Time Average"): _grand(obstruction_df)[1],
+                ("Amnesty", "Andon Count"): _grand(amnesty_df)[0],
+                ("Amnesty", "Dwell Time Average"): _grand(amnesty_df)[1],
                 ("Drive Lacking Capability", "Andon Count"): _grand(dlc_df)[0],
                 ("Drive Lacking Capability", "Dwell Time Average"): _grand(dlc_df)[1],
                 ("Blocking Andons", "Andon Count"): _grand(blocking_df)[0],
@@ -1056,7 +1054,7 @@ if uploaded_files:
             }
             gen_tbl.loc["Grand Total"] = grand
 
-            # Styling: Blocking <=5 → Green, >5 → Red; Non-blocking >=10 → Red, <10 → Green
+            # Styling: Blocking <=5 Green else Red; Non-blocking >=10 Red else Green
             def style_table(data):
                 s = pd.DataFrame("", index=data.index, columns=data.columns)
                 avg_cols = [col for col in data.columns if "Dwell Time Average" in col[1] or "Total Dwell Time Average" in col[1]]
@@ -1078,7 +1076,7 @@ if uploaded_files:
 
             st.dataframe(styled, use_container_width=True, height=500)
 
-            # Simple download (you can expand with full colored Excel later)
+            # Download
             st.markdown("<br>", unsafe_allow_html=True)
             dl1, dl2 = st.columns(2)
             with dl1:
@@ -1087,7 +1085,7 @@ if uploaded_files:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
                     use_container_width=True)
             with dl2:
-                st.caption("Add PDF export here if needed")
+                st.caption("PDF export can be added here")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # END OF AFM GENERAL TAB
