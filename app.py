@@ -962,419 +962,148 @@ if uploaded_files:
 # ══════════════════════════════════════════════════════════════════════════════
 
     # ── Tab: AFM General ──────────────────────────────────────────────────────
+        # ── Tab: AFM General ──────────────────────────────────────────────────────
     with tab["📋 AFM General"]:
+        # 1. DATA CLEANING & STANDARDIZATION
+        gen_fdf = fdf.copy()
+        if "Blocking" in gen_fdf.columns:
+            # Fixes the "0" values by making sure 'Yes' is recognized
+            gen_fdf["Blocking"] = gen_fdf["Blocking"].astype(str).str.strip().str.capitalize()
+            gen_fdf["Blocking"] = gen_fdf["Blocking"].replace({"True": "Yes", "False": "No", "Y": "Yes", "N": "No"})
+        
+        st.markdown('<div class="sec-title">📋 AFM General Performance</div>', unsafe_allow_html=True)
 
-        if not optional_cols["Blocking"]:
-            st.warning("⚠️ Your data does not have a 'Blocking' column. Please upload a file that includes the Blocking (Yes/No) column to use this tab.")
+        # 2. FILTERS (Hide/Unhide Resolvers)
+        gf1, gf2 = st.columns(2)
+        with gf1:
+            h_res = st.multiselect("Hide Resolvers", options=sorted(gen_fdf["Resolver"].unique()), key="gen_h")
+        with gf2:
+            s_res = st.multiselect("Show Only These", options=sorted(gen_fdf["Resolver"].unique()), key="gen_s")
+
+        if s_res:
+            gen_fdf = gen_fdf[gen_fdf["Resolver"].isin(s_res)]
+        elif h_res:
+            gen_fdf = gen_fdf[~gen_fdf["Resolver"].isin(h_res)]
+
+        # 3. CATEGORY SPLITTING (Ensures Amnesty/DLC are separate from Non-Blocking)
+        NON_BLOCKING_EXCLUDE = [
+            "Replace Fiducial", "Untrusted Fiducial Barcode", "Out of Work", 
+            "Product Problem", "Unreachable Charger", "Drive Unit:Repeated Offenders: Pod Barcode Failed", 
+            "Pod Repeated Offender Replace Pod Fiducial"
+        ]
+
+        blocking_df = gen_fdf[gen_fdf["Blocking"] == "Yes"]
+        amnesty_df  = gen_fdf[gen_fdf["Andon Type"] == "Amnesty"]
+        dlc_df      = gen_fdf[gen_fdf["Andon Type"] == "Drive Lacking Capability"]
+        
+        # This sums all other remaining non-blocking into one "Non-Blocking" category
+        nonblock_df = gen_fdf[
+            (gen_fdf["Blocking"] == "No") & 
+            (gen_fdf["Andon Type"] != "Amnesty") & 
+            (gen_fdf["Andon Type"] != "Drive Lacking Capability") &
+            (~gen_fdf["Andon Type"].isin(NON_BLOCKING_EXCLUDE))
+        ]
+
+        # 4. BUILD TABLE DATA
+        def get_stats(df_sub, res_name):
+            r = df_sub[df_sub["Resolver"] == res_name]
+            cnt = len(r)
+            avg = round(r["Resolve_Min"].mean(), 2) if cnt > 0 else None
+            return cnt, avg
+
+        all_res = sorted(gen_fdf["Resolver"].unique())
+        rows = {}
+        for res in all_res:
+            c1, a1 = get_stats(blocking_df, res)
+            c2, a2 = get_stats(amnesty_df, res)
+            c3, a3 = get_stats(dlc_df, res)
+            c4, a4 = get_stats(nonblock_df, res)
+            rows[res] = {
+                ("Blocking", "Count"): c1, ("Blocking", "Avg"): a1,
+                ("Amnesty", "Count"): c2, ("Amnesty", "Avg"): a2,
+                ("Drive Lacking", "Count"): c3, ("Drive Lacking", "Avg"): a3,
+                ("Non-Blocking", "Count"): c4, ("Non-Blocking", "Avg"): a4
+            }
+        
+        gen_tbl = pd.DataFrame(rows).T
+        gen_tbl.index.name = "Resolver"
+        gen_tbl.columns = pd.MultiIndex.from_tuples(gen_tbl.columns)
+
+        # Grand Total Row
+        gt_row = pd.DataFrame({
+            ("Blocking", "Count"): [len(blocking_df)], ("Blocking", "Avg"): [round(blocking_df["Resolve_Min"].mean(), 2)],
+            ("Amnesty", "Count"): [len(amnesty_df)], ("Amnesty", "Avg"): [round(amnesty_df["Resolve_Min"].mean(), 2)],
+            ("Drive Lacking", "Count"): [len(dlc_df)], ("Drive Lacking", "Avg"): [round(dlc_df["Resolve_Min"].mean(), 2)],
+            ("Non-Blocking", "Count"): [len(nonblock_df)], ("Non-Blocking", "Avg"): [round(nonblock_df["Resolve_Min"].mean(), 2)]
+        }, index=["Grand Total"])
+        gen_tbl = pd.concat([gt_row, gen_tbl])
+
+        # 5. STYLING (Heatmap Colors)
+        avg_cols = [c for c in gen_tbl.columns if c[1] == "Avg"]
+        def style_gen(data):
+            s = pd.DataFrame("", index=data.index, columns=data.columns)
+            d_rows = [i for i in data.index if i != "Grand Total"]
+            for col in avg_cols:
+                ser = data.loc[d_rows, col]
+                for idx in d_rows:
+                    val = data.loc[idx, col]
+                    if not pd.isna(val):
+                        s.loc[idx, col] = dwell_color(val, ser)
+            if "Grand Total" in data.index:
+                s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
+            return s
+
+        st.dataframe(gen_tbl.style.apply(style_gen, axis=None).format("{:.2f}", subset=avg_cols, na_rep="—"), use_container_width=True, height=400)
+
+        # 6. EXCEL DOWNLOAD BUTTON (With Colors)
+        import io as _io
+        from openpyxl import Workbook as _WB
+        from openpyxl.styles import PatternFill as _PF, Font as _FN, Alignment as _AL, Border as _BD, Side as _SD
+
+        def _build_gen_excel(tbl):
+            wb = _WB(); ws = wb.active; ws.title = "AFM General"
+            HDR = _PF("solid", fgColor="1A237E"); HFNT = _FN(color="FFFFFF", bold=True)
+            GRN = _PF("solid", fgColor="E8EAF6"); GFNT = _FN(color="1A237E", bold=True)
+            BDR = _BD(left=_SD(style="thin"), right=_SD(style="thin"), top=_SD(style="thin"), bottom=_SD(style="thin"))
+            
+            # Write Headers
+            ws.cell(1, 1, "Resolver").fill=HDR; ws.cell(1, 1).font=HFNT
+            for i, (cat, sub) in enumerate(tbl.columns, 2):
+                ws.cell(1, i, f"{cat} ({sub})").fill=HDR; ws.cell(1, i).font=HFNT
+            
+            # Write Data
+            for r_idx, (idx_val, row) in enumerate(tbl.iterrows(), 2):
+                is_gt = (idx_val == "Grand Total")
+                c1 = ws.cell(r_idx, 1, str(idx_val))
+                c1.border=BDR
+                if is_gt: c1.fill=GRN; c1.font=GFNT
+                
+                for c_idx, val in enumerate(row, 2):
+                    cell = ws.cell(r_idx, c_idx, val)
+                    cell.border=BDR; cell.alignment=_AL(horizontal="center")
+                    if is_gt: cell.fill=GRN; cell.font=GFNT
+
+            buf = _io.BytesIO(); wb.save(buf); return buf.getvalue()
+
+        st.download_button("📊 Download Formatted Excel", _build_gen_excel(gen_tbl), "AFM_General.xlsx", use_container_width=True)
+
+        # 7. HOURS LOST SECTION
+        st.markdown("---")
+        st.subheader("⏱️ Hours Lost to Blocking Andons")
+        
+        # KPI Boxes
+        total_mins = blocking_df["Resolve_Min"].sum()
+        h1, h2 = st.columns(2)
+        h1.metric("Total Hours Lost", f"{total_mins/60:.2f} hrs")
+        h2.metric("Blocking Andon Count", f"{len(blocking_df):,}")
+
+        # Trend Chart
+        daily_lost = blocking_df.groupby("Date")["Resolve_Min"].sum() / 60
+        if not daily_lost.empty:
+            st.line_chart(daily_lost)
         else:
+            st.info("No blocking data found for the trend chart.")
 
-            # ── Non-blocking exclusions ────────────────────────────────────────
-            NON_BLOCKING_EXCLUDE = [
-                "Replace Fiducial",
-                "Untrusted Fiducial Barcode",
-                "Out of Work",
-                "Product Problem",
-                "Unreachable Charger",
-                "Drive Unit:Repeated Offenders: Pod Barcode Failed",
-                "Pod Repeated Offender Replace Pod Fiducial",
-            ]
-
-            st.markdown('<div class="sec-title">📋 AFM General — Blocking & Non-Blocking Performance</div>', unsafe_allow_html=True)
-
-            # ── Resolver filters ───────────────────────────────────────────────
-            gf1, gf2 = st.columns([2, 2])
-            with gf1:
-                gen_hidden_resolvers = st.multiselect(
-                    "Hide Resolvers",
-                    options=sorted(fdf["Resolver"].unique().tolist()),
-                    default=[],
-                    key="gen_hide_resolvers",
-                    help="Select resolvers to HIDE from this table"
-                )
-            with gf2:
-                gen_show_resolvers = st.multiselect(
-                    "Show Only These Resolvers",
-                    options=sorted(fdf["Resolver"].unique().tolist()),
-                    default=[],
-                    key="gen_show_resolvers",
-                    help="Select specific resolvers to show ONLY these"
-                )
-
-            if gen_show_resolvers:
-                gen_fdf = fdf[fdf["Resolver"].isin(gen_show_resolvers)].copy()
-                st.caption(f"Showing only: {', '.join(gen_show_resolvers)} · {len(gen_fdf):,} records")
-            elif gen_hidden_resolvers:
-                gen_fdf = fdf[~fdf["Resolver"].isin(gen_hidden_resolvers)].copy()
-                st.caption(f"Hiding: {', '.join(gen_hidden_resolvers)} · {len(gen_fdf):,} records shown")
-            else:
-                gen_fdf = fdf.copy()
-
-            all_resolvers_gen = sorted(gen_fdf["Resolver"].unique())
-
-            # ── Split data into 4 categories ──────────────────────────────────
-            # 1. Blocking = Yes (station stopped — any andon type)
-            blocking_df = gen_fdf[gen_fdf["Blocking"] == "Yes"].copy()
-
-            # 2. Amnesty (non-blocking, its own column)
-            amnesty_df = gen_fdf[gen_fdf["Andon Type"] == "Amnesty"].copy()
-
-            # 3. Drive Lacking Capability (non-blocking, its own column)
-            dlc_df = gen_fdf[gen_fdf["Andon Type"] == "Drive Lacking Capability"].copy()
-
-            # 4. Non-blocking = Blocking No, excluding the listed types
-            nonblock_df = gen_fdf[
-                (gen_fdf["Blocking"] == "No") &
-                (~gen_fdf["Andon Type"].isin(NON_BLOCKING_EXCLUDE))
-            ].copy()
-
-            # ── Build table row by row ─────────────────────────────────────────
-            def _stats(df_sub, resolver):
-                r = df_sub[df_sub["Resolver"] == resolver]
-                cnt = len(r)
-                avg = round(r["Resolve_Min"].mean(), 2) if cnt > 0 else None
-                return cnt, avg
-
-            rows = {}
-            for resolver in all_resolvers_gen:
-                c_bl,  a_bl  = _stats(blocking_df,  resolver)
-                c_am,  a_am  = _stats(amnesty_df,   resolver)
-                c_dlc, a_dlc = _stats(dlc_df,       resolver)
-                c_nb,  a_nb  = _stats(nonblock_df,  resolver)
-                r_all        = gen_fdf[gen_fdf["Resolver"] == resolver]
-                c_tot        = len(r_all)
-                a_tot        = round(r_all["Resolve_Min"].mean(), 2) if c_tot > 0 else None
-
-                rows[resolver] = {
-                    ("Blocking (Yes)",     "Count"):     c_bl,
-                    ("Blocking (Yes)",     "Avg (min)"): a_bl,
-                    ("Amnesty",            "Count"):     c_am,
-                    ("Amnesty",            "Avg (min)"): a_am,
-                    ("Drive Lacking Cap.", "Count"):     c_dlc,
-                    ("Drive Lacking Cap.", "Avg (min)"): a_dlc,
-                    ("Non-Blocking",       "Count"):     c_nb,
-                    ("Non-Blocking",       "Avg (min)"): a_nb,
-                    ("Total",              "Count"):     c_tot,
-                    ("Total",              "Avg (min)"): a_tot,
-                }
-
-            gen_tbl = pd.DataFrame(rows).T
-            gen_tbl.index.name = "Resolver"
-            gen_tbl.columns = pd.MultiIndex.from_tuples(gen_tbl.columns)
-
-            # Grand Total row
-            def _grand(df_sub):
-                cnt = len(df_sub)
-                avg = round(df_sub["Resolve_Min"].mean(), 2) if cnt > 0 else None
-                return cnt, avg
-
-            c_bl_g, a_bl_g   = _grand(blocking_df)
-            c_am_g, a_am_g   = _grand(amnesty_df)
-            c_dlc_g, a_dlc_g = _grand(dlc_df)
-            c_nb_g, a_nb_g   = _grand(nonblock_df)
-            c_tot_g          = len(gen_fdf)
-            a_tot_g          = round(gen_fdf["Resolve_Min"].mean(), 2)
-
-            grand_gen = pd.DataFrame({
-                ("Blocking (Yes)",     "Count"):     [c_bl_g],
-                ("Blocking (Yes)",     "Avg (min)"): [a_bl_g],
-                ("Amnesty",            "Count"):     [c_am_g],
-                ("Amnesty",            "Avg (min)"): [a_am_g],
-                ("Drive Lacking Cap.", "Count"):     [c_dlc_g],
-                ("Drive Lacking Cap.", "Avg (min)"): [a_dlc_g],
-                ("Non-Blocking",       "Count"):     [c_nb_g],
-                ("Non-Blocking",       "Avg (min)"): [a_nb_g],
-                ("Total",              "Count"):     [c_tot_g],
-                ("Total",              "Avg (min)"): [a_tot_g],
-            }, index=["Grand Total"])
-            grand_gen.columns = pd.MultiIndex.from_tuples(grand_gen.columns)
-            gen_tbl = pd.concat([grand_gen, gen_tbl])
-
-            # ── Style ──────────────────────────────────────────────────────────
-            avg_gen_cols = [c for c in gen_tbl.columns if c[1] == "Avg (min)"]
-
-            def _style_gen(data):
-                s = pd.DataFrame("", index=data.index, columns=data.columns)
-                data_rows = [i for i in data.index if i != "Grand Total"]
-                for col in avg_gen_cols:
-                    if col not in data.columns:
-                        continue
-                    ser = data.loc[data_rows, col]
-                    for idx in data_rows:
-                        val = data.loc[idx, col]
-                        try:
-                            if pd.isna(val):
-                                continue
-                        except Exception:
-                            continue
-                        if col[0] == "Blocking (Yes)":
-                            if val > DEFAULT_THRESHOLD * 1.5:
-                                s.loc[idx, col] = "background-color: rgb(210,40,40); color:white; font-weight:700"
-                            elif val > DEFAULT_THRESHOLD:
-                                s.loc[idx, col] = "background-color: rgb(255,140,0); color:black; font-weight:700"
-                            else:
-                                s.loc[idx, col] = "background-color: rgb(60,180,60); color:white; font-weight:700"
-                        else:
-                            s.loc[idx, col] = dwell_color(val, ser)
-                if "Grand Total" in data.index:
-                    s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
-                return s
-
-            gen_styler = (gen_tbl.style.apply(_style_gen, axis=None)
-                .format({c: "{:.2f}" for c in gen_tbl.columns if c[1] == "Avg (min)"}, na_rep="—")
-                .format({c: "{:,.0f}" for c in gen_tbl.columns if c[1] == "Count"}, na_rep="—"))
-
-            st.dataframe(gen_styler, use_container_width=True, height=450)
-
-            # ── Download buttons ───────────────────────────────────────────────
-            import io as _io2
-            from openpyxl import Workbook as _WB2
-            from openpyxl.styles import PatternFill as _PF2, Font as _FN2, Alignment as _AL2, Border as _BD2, Side as _SD2
-            from openpyxl.utils import get_column_letter as _gcl2
-
-            def _build_gen_excel(tbl):
-                wb = _WB2()
-                ws = wb.active
-                ws.title = "AFM General"
-                HDR   = _PF2("solid", fgColor="1A237E")
-                HFNT  = _FN2(color="FFFFFF", bold=True, size=9)
-                GRFIL = _PF2("solid", fgColor="E8EAF6")
-                GRFNT = _FN2(color="1A237E", bold=True, size=9)
-                RED   = _PF2("solid", fgColor="D32F2F")
-                ORG   = _PF2("solid", fgColor="F57C00")
-                GRE   = _PF2("solid", fgColor="388E3C")
-                YEL   = _PF2("solid", fgColor="FFD600")
-                LGR   = _PF2("solid", fgColor="81C784")
-                WFT   = _FN2(color="FFFFFF", bold=True, size=9)
-                BFT   = _FN2(color="000000", bold=True, size=9)
-                NFT   = _FN2(size=9)
-                THIN  = _SD2(style="thin", color="C5CAE9")
-                BDR   = _BD2(left=THIN, right=THIN, top=THIN, bottom=THIN)
-                CTR   = _AL2(horizontal="center", vertical="center")
-
-                ws.cell(row=1, column=1, value="Resolver").fill = HDR
-                ws.cell(row=1, column=1).font = HFNT
-                ws.cell(row=1, column=1).alignment = CTR
-                ws.cell(row=1, column=1).border = BDR
-
-                col = 2
-                col_map = {}
-                cats_seen = {}
-                for (cat, sub) in tbl.columns:
-                    col_map[(cat, sub)] = col
-                    if cat not in cats_seen:
-                        cats_seen[cat] = col
-                    col += 1
-
-                for cat, start_col in cats_seen.items():
-                    sub_count = sum(1 for (c2, s) in tbl.columns if c2 == cat)
-                    end_col = start_col + sub_count - 1
-                    if start_col != end_col:
-                        ws.merge_cells(start_row=1, start_column=start_col,
-                                       end_row=1, end_column=end_col)
-                    cell = ws.cell(row=1, column=start_col, value=cat)
-                    cell.fill = HDR; cell.font = HFNT
-                    cell.alignment = CTR; cell.border = BDR
-
-                ws.cell(row=2, column=1, value="Resolver").fill = HDR
-                ws.cell(row=2, column=1).font = HFNT
-                ws.cell(row=2, column=1).alignment = CTR
-                ws.cell(row=2, column=1).border = BDR
-                for (cat, sub), col_n in col_map.items():
-                    cell = ws.cell(row=2, column=col_n, value=sub)
-                    cell.fill = HDR; cell.font = HFNT
-                    cell.alignment = CTR; cell.border = BDR
-
-                data_rows = [i for i in tbl.index if i != "Grand Total"]
-                for r_idx, resolver in enumerate(list(tbl.index), 3):
-                    is_grand = resolver == "Grand Total"
-                    cell = ws.cell(row=r_idx, column=1, value=resolver)
-                    cell.border = BDR
-                    if is_grand:
-                        cell.fill = GRFIL; cell.font = GRFNT
-                    else:
-                        cell.font = NFT
-
-                    for (cat, sub), col_n in col_map.items():
-                        raw = tbl.loc[resolver, (cat, sub)]
-                        try:
-                            val = float(raw) if not pd.isna(raw) else None
-                        except Exception:
-                            val = None
-                        cell = ws.cell(row=r_idx, column=col_n, value=val)
-                        cell.border = BDR; cell.alignment = CTR
-                        if is_grand:
-                            cell.fill = GRFIL; cell.font = GRFNT
-                        elif sub == "Avg (min)" and val is not None:
-                            if cat == "Blocking (Yes)":
-                                if val > DEFAULT_THRESHOLD * 1.5:
-                                    cell.fill = RED; cell.font = WFT
-                                elif val > DEFAULT_THRESHOLD:
-                                    cell.fill = ORG; cell.font = BFT
-                                else:
-                                    cell.fill = GRE; cell.font = WFT
-                            else:
-                                ser_vals = [
-                                    float(tbl.loc[i, (cat, sub)])
-                                    for i in data_rows
-                                    if not pd.isna(tbl.loc[i, (cat, sub)])
-                                ]
-                                if len(ser_vals) >= 2:
-                                    mn, mx = min(ser_vals), max(ser_vals)
-                                    if mx != mn:
-                                        norm = (val - mn) / (mx - mn)
-                                        if norm >= 0.85:   cell.fill = RED; cell.font = WFT
-                                        elif norm >= 0.65: cell.fill = ORG; cell.font = BFT
-                                        elif norm >= 0.45: cell.fill = YEL; cell.font = BFT
-                                        elif norm >= 0.2:  cell.fill = LGR; cell.font = BFT
-                                        else:              cell.fill = GRE; cell.font = WFT
-                        else:
-                            cell.font = NFT
-
-                for col_obj in ws.columns:
-                    max_len = 0
-                    cl = _gcl2(col_obj[0].column)
-                    for cell in col_obj:
-                        try: max_len = max(max_len, len(str(cell.value or "")))
-                        except: pass
-                    ws.column_dimensions[cl].width = min(max_len + 3, 30)
-
-                # Sheet 2: Hours Lost detail
-                ws2 = wb.create_sheet("Hours Lost")
-                for i, hdr in enumerate(["Date", "Blocking Andon Type", "Count", "Minutes Lost", "Hours Lost"], 1):
-                    cell = ws2.cell(row=1, column=i, value=hdr)
-                    cell.fill = HDR; cell.font = HFNT
-                    cell.border = BDR; cell.alignment = CTR
-
-                daily_bl = (
-                    gen_fdf[gen_fdf["Blocking"] == "Yes"]
-                    .groupby(["Date", "Andon Type"])
-                    .agg(Count=("Resolve_Min", "count"), Minutes=("Resolve_Min", "sum"))
-                    .reset_index()
-                )
-                daily_bl["Hours"] = (daily_bl["Minutes"] / 60).round(3)
-                daily_bl["Minutes"] = daily_bl["Minutes"].round(2)
-                daily_bl = daily_bl.sort_values(["Date", "Andon Type"])
-
-                for r, row in daily_bl.iterrows():
-                    ws2.cell(row=r+2, column=1, value=str(row["Date"]))
-                    ws2.cell(row=r+2, column=2, value=row["Andon Type"])
-                    ws2.cell(row=r+2, column=3, value=int(row["Count"]))
-                    ws2.cell(row=r+2, column=4, value=row["Minutes"])
-                    ws2.cell(row=r+2, column=5, value=row["Hours"])
-
-                for col_obj in ws2.columns:
-                    max_len = 0
-                    cl = _gcl2(col_obj[0].column)
-                    for cell in col_obj:
-                        try: max_len = max(max_len, len(str(cell.value or "")))
-                        except: pass
-                    ws2.column_dimensions[cl].width = min(max_len + 4, 30)
-
-                buf = _io2.BytesIO()
-                wb.save(buf)
-                buf.seek(0)
-                return buf.getvalue()
-
-            st.markdown("<br>", unsafe_allow_html=True)
-            dl_g1, dl_g2 = st.columns(2)
-            with dl_g1:
-                gen_excel = _build_gen_excel(gen_tbl)
-                st.download_button(
-                    "⬇️ Download AFM General (.xlsx)",
-                    gen_excel,
-                    "AFM_General.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
-                    key="gen_excel_dl"
-                )
-            with dl_g2:
-                try:
-                    import pdf_report as _prg
-                    gen_pdf = _prg.build_pdf_daily(fdf, uploaded_files, within_threshold)
-                    st.download_button(
-                        "⬇️ Download PDF Report",
-                        gen_pdf,
-                        "LCY3_AFM_General.pdf",
-                        "application/pdf",
-                        use_container_width=True,
-                        key="gen_pdf_dl"
-                    )
-                except Exception:
-                    st.caption("Add pdf_report.py to enable PDF export")
-
-            # ── Hours Lost — separate section below table ──────────────────────
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown('<div class="sec-title">⏱️ Hours Lost to Blocking Andons</div>', unsafe_allow_html=True)
-            st.caption("Hours lost = total dwell time of Blocking (Yes) andons — time the station was stopped waiting for resolution")
-
-            today    = gen_fdf["Date"].max()
-            today_bl = gen_fdf[(gen_fdf["Date"] == today) & (gen_fdf["Blocking"] == "Yes")]
-            all_bl   = gen_fdf[gen_fdf["Blocking"] == "Yes"]
-
-            today_min = today_bl["Resolve_Min"].sum()
-            today_hrs = today_min / 60
-            today_cnt = len(today_bl)
-            total_min = all_bl["Resolve_Min"].sum()
-            total_hrs = total_min / 60
-
-            hl1, hl2, hl3, hl4 = st.columns(4)
-            for box, lbl, val, sub, color in [
-                (hl1, "Today Hours Lost",     f"{today_hrs:.2f} hrs",  f"{today_min:.0f} min · {str(today)}", "#ef5350"),
-                (hl2, "Today Blocking Count", f"{today_cnt:,}",         "blocking andons today",               "#ffa726"),
-                (hl3, "Total Hours Lost",     f"{total_hrs:.2f} hrs",  "across all dates",                    "#3949ab"),
-                (hl4, "Total Blocking Count", f"{len(all_bl):,}",       "blocking andons total",               "#3949ab"),
-            ]:
-                box.markdown(f"""
-                <div class="kpi-box" style="border-top-color:{color};">
-                    <div class="kpi-label">{lbl}</div>
-                    <div class="kpi-value" style="font-size:1.6rem;color:{color};">{val}</div>
-                    <div class="kpi-sub">{sub}</div>
-                </div>""", unsafe_allow_html=True)
-
-            # Daily hours lost trend
-            st.markdown("<br>", unsafe_allow_html=True)
-            daily_bl_trend = (
-                gen_fdf[gen_fdf["Blocking"] == "Yes"]
-                .groupby("Date")
-                .agg(Minutes_Lost=("Resolve_Min", "sum"), Count=("Resolve_Min", "count"))
-                .reset_index()
-            )
-            daily_bl_trend["Hours_Lost"] = (daily_bl_trend["Minutes_Lost"] / 60).round(2)
-
-            if not daily_bl_trend.empty:
-                fig_hl = go.Figure()
-                fig_hl.add_trace(go.Bar(
-                    x=daily_bl_trend["Date"].astype(str),
-                    y=daily_bl_trend["Hours_Lost"],
-                    marker_color="#ef5350",
-                    text=daily_bl_trend["Hours_Lost"].round(2),
-                    textposition="outside",
-                    name="Hours Lost",
-                    customdata=daily_bl_trend["Count"],
-                    hovertemplate="<b>%{x}</b><br>Hours Lost: %{y:.2f}<br>Blocking Andons: %{customdata}<extra></extra>"
-                ))
-                fig_hl.add_trace(go.Scatter(
-                    x=daily_bl_trend["Date"].astype(str),
-                    y=daily_bl_trend["Count"],
-                    name="Blocking Count",
-                    yaxis="y2",
-                    mode="lines+markers",
-                    line=dict(color="#1a237e", width=2),
-                    marker=dict(size=6)
-                ))
-                fig_hl.update_layout(
-                    height=340,
-                    xaxis_title="Date",
-                    yaxis=dict(title="Hours Lost"),
-                    yaxis2=dict(title="Blocking Count", overlaying="y", side="right", showgrid=False),
-                    legend=dict(orientation="h", y=-0.3),
-                    margin=dict(t=20, b=40, l=0, r=0),
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)"
-                )
-                st.plotly_chart(fig_hl, use_container_width=True)
-            else:
-                st.info("No blocking andons (Blocking = Yes) found in the current date range.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # END OF AFM GENERAL TAB
