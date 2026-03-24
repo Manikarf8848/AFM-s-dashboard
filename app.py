@@ -1185,14 +1185,18 @@ if _all_parts or uploaded_files:
             tc_df["% of Total"] = (tc_df["Count"] / tc_df["Count"].sum() * 100).round(1)
             tc_df["Avg Time (min)"] = tc_df["Andon Type"].map(
                 fdf.groupby("Andon Type")["Resolve_Min"].mean().round(2))
-            tc_df["Status"] = tc_df["Andon Type"].apply(
-                lambda t: "⚠️ Above target" if fdf[fdf["Andon Type"]==t]["Resolve_Min"].mean() > get_threshold(t) * 1.5
-                else ("⚠️ Borderline" if fdf[fdf["Andon Type"]==t]["Resolve_Min"].mean() > (get_threshold(t) or DEFAULT_THRESHOLD)
-                      else "✅ OK") if get_threshold(t) is not None else "—"
-            )
+            
             st.dataframe(tc_df.style.format({"Count": "{:,}", "% of Total": "{:.1f}%",
                                               "Avg Time (min)": "{:.2f}"}),
                          use_container_width=True, height=320)
+# Replace lines 1188-1189 with this:
+            tc_df["Status"] = tc_df["Andon Type"].apply(
+            lambda t: "⚠️ Above target" if (
+            get_threshold(t) is not None and 
+           not fdf[fdf["Andon Type"]==t].empty and
+            fdf[fdf["Andon Type"]==t]["Resolve_Min"].mean() > get_threshold(t) * 1.5
+    ) else "✅ On Track"
+)
 
         with rc2:
             st.markdown('<div class="sec-title">Andon Type Distribution</div>', unsafe_allow_html=True)
