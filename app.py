@@ -156,25 +156,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"<div style='font-size:0.7rem;color:{_sub};text-align:center;'>LCY3 AFM Dashboard<br>Made by <b>Manish Karki</b></div>", unsafe_allow_html=True)
 
-# ── Sidebar PDF quick download (shown when data is loaded) ────────────────────
-if uploaded_files:
-    with st.sidebar:
-        st.markdown("---")
-        st.markdown(f"<div style='font-size:0.95rem;font-weight:700;color:{_text};'>📄 Quick PDF Export</div>", unsafe_allow_html=True)
-        try:
-            import pdf_report as _pr
-            if st.button("⬇️ Download Daily PDF", use_container_width=True, key="sidebar_daily_pdf"):
-                pdf_bytes = _pr.build_pdf_daily(fdf, uploaded_files, within_threshold)
-                st.download_button("📥 Save Daily PDF", pdf_bytes,
-                                   "LCY3_Daily_Report.pdf", "application/pdf",
-                                   use_container_width=True, key="sidebar_daily_pdf_dl")
-            if st.button("⬇️ Download Weekly PDF", use_container_width=True, key="sidebar_weekly_pdf"):
-                pdf_bytes = _pr.build_pdf_weekly(fdf, uploaded_files, within_threshold)
-                st.download_button("📥 Save Weekly PDF", pdf_bytes,
-                                   "LCY3_Weekly_Report.pdf", "application/pdf",
-                                   use_container_width=True, key="sidebar_weekly_pdf_dl")
-        except ImportError:
-            st.caption("Install pdf_report.py to enable PDF exports")
 st.markdown(f"""
 <div class="dash-header">
     <div>
@@ -472,6 +453,23 @@ if uploaded_files:
         if t is None:
             return True
         return row["Resolve_Min"] <= t
+
+    # ── Sidebar PDF quick download ─────────────────────────────────────────────
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown(f"<div style='font-size:0.95rem;font-weight:700;color:{_text};'>📄 Quick PDF Export</div>", unsafe_allow_html=True)
+        try:
+            import pdf_report as _pr
+            daily_pdf_bytes  = _pr.build_pdf_daily(fdf, uploaded_files, within_threshold)
+            weekly_pdf_bytes = _pr.build_pdf_weekly(fdf, uploaded_files, within_threshold)
+            st.download_button("⬇️ Daily PDF", daily_pdf_bytes,
+                               "LCY3_Daily_Report.pdf", "application/pdf",
+                               use_container_width=True, key="sidebar_daily_pdf")
+            st.download_button("⬇️ Weekly PDF", weekly_pdf_bytes,
+                               "LCY3_Weekly_Report.pdf", "application/pdf",
+                               use_container_width=True, key="sidebar_weekly_pdf")
+        except Exception:
+            st.caption("Add pdf_report.py to enable PDF exports")
 
     within_pct = fdf.apply(within_threshold, axis=1).mean() * 100
     efficiency_avg = (fdf.groupby("Resolver").agg(n=("Resolve_Min","count"), avg=("Resolve_Min","mean"))
