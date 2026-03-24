@@ -949,6 +949,7 @@ if uploaded_files:
 
     # ── Tab: AFM General ──────────────────────────────────────────────────────
     # --- Tab: AFM General ------------------------------------------------------
+    # --- Tab: AFM General ------------------------------------------------------
     with tab["📋 AFM General"]:
 
         if not optional_cols.get("Blocking", False):
@@ -963,6 +964,7 @@ if uploaded_files:
 
             st.markdown('<div class="sec-title">📋 AFM General — Blocking & Non-Blocking Performance</div>', unsafe_allow_html=True)
 
+            # Resolver filters
             gf1, gf2 = st.columns([2, 2])
             with gf1:
                 gen_hidden_resolvers = st.multiselect("Hide Resolvers", 
@@ -978,10 +980,19 @@ if uploaded_files:
             else:
                 gen_fdf = fdf.copy()
 
+            # Robust cleaning for your exact data ("yes"/"no")
             gen_fdf = gen_fdf.copy()
-            gen_fdf["Blocking_clean"] = gen_fdf["Blocking"].astype(str).str.strip().str.upper()
+            gen_fdf["Blocking_clean"] = (
+                gen_fdf["Blocking"]
+                .astype(str)
+                .str.strip()
+                .str.lower()
+                .map({"yes": "YES", "no": "NO", "true": "YES", "1": "YES", "y": "YES"})
+                .fillna("NO")
+            )
             gen_fdf["Andon_Type_clean"] = gen_fdf["Andon Type"].astype(str).str.strip()
 
+            # Split categories
             obstruction_df = gen_fdf[gen_fdf["Andon_Type_clean"] == "Obstruction"].copy()
             dlc_df         = gen_fdf[gen_fdf["Andon_Type_clean"] == "Drive Lacking Capability"].copy()
             blocking_df    = gen_fdf[gen_fdf["Blocking_clean"] == "YES"].copy()
@@ -1045,6 +1056,7 @@ if uploaded_files:
             }
             gen_tbl.loc["Grand Total"] = grand
 
+            # Styling: Blocking <=5 → Green, >5 → Red; Non-blocking >=10 → Red, <10 → Green
             def style_table(data):
                 s = pd.DataFrame("", index=data.index, columns=data.columns)
                 avg_cols = [col for col in data.columns if "Dwell Time Average" in col[1] or "Total Dwell Time Average" in col[1]]
@@ -1066,17 +1078,16 @@ if uploaded_files:
 
             st.dataframe(styled, use_container_width=True, height=500)
 
-            # Download section (simplified - you can expand later)
+            # Simple download (you can expand with full colored Excel later)
             st.markdown("<br>", unsafe_allow_html=True)
             dl1, dl2 = st.columns(2)
             with dl1:
                 st.download_button("⬇️ Download Excel with Colors", 
-                    data="placeholder",  # replace with your build_colored_excel if you want
-                    file_name="AFM_General.xlsx", 
+                    data=b"", file_name="AFM_General.xlsx", 
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
                     use_container_width=True)
             with dl2:
-                st.caption("PDF export can be added here")
+                st.caption("Add PDF export here if needed")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # END OF AFM GENERAL TAB
