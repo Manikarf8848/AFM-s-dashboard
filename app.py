@@ -1346,6 +1346,129 @@ if _all_parts or uploaded_files:
             afm_tbl = pd.concat([afm_tbl, grand_row])
 
             dwell_cs = [(c, "Dwell Time Avg") for c in andon_types] + [("Total Andons", "Avg Time")]
+
+            def _style_afm(data):
+                s = pd.DataFrame("", index=data.index, columns=data.columns)
+                rows = [i for i in data.index if i != "Grand Total"]
+                for col in dwell_cs:
+                    if col in data.columns:
+                        ser = data.loc[rows, col]
+                        for idx in rows:
+                            s.loc[idx, col] = dwell_color(data.loc[idx, col], ser)
+                if "Grand Total" in data.index:
+                    s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
+                return s
+
+            afm_styler = (afm_tbl.style.apply(_style_afm, axis=None)
+                .format({c: "{:.2f}" for c in afm_tbl.columns if c[1] in ("Dwell Time Avg", "Avg Time")}, na_rep="—")
+                .format({c: "{:.0f}" for c in afm_tbl.columns if c[1] in ("Andon Count", "Count")}, na_rep="—"))
+            st.dataframe(afm_styler, use_container_width=True, height=450)
+
+            import io as _io
+            from openpyxl import Workbook as _WB
+            from openpyxl.styles import PatternFill as _PF, Font as _FN, Alignment as _AL, Border as _BD, Side as _SD
+            from openpyxl.utils import get_column_letter as _gcl
+
+            def _build_afm_excel(tbl, dwell_cols):
+                wb = _WB()
+                ws = wb.active
+                ws.title = "AFM Performance"
+                HDR  = _PF("solid", fgColor="1A237E")
+                HFNT = _FN(color="FFFFFF", bold=True, size=9)
+                GRN  = _PF("solid", fgColor="E8EAF6")
+                GFNT = _FN(color="1A237E", bold=True, size=9)
+                RED  = _PF("solid", fgColor="D32F2F")
+                ORG  = _PF("solid", fgColor="F57C00")
+                GRE  = _PF("solid", fgColor="388E3C")
+                YEL  = _PF("solid", fgColor="FFD600")
+                LGR  = _PF("solid", fgColor="81C784")
+                WFT  = _FN(color="FFFFFF", bold=True, size=9)
+                BFT  = _FN(color="000000", bold=True, size=9)
+                NFT  = _FN(size=9)
+                THIN = _SD(style="thin", color="C5CAE9")
+                BDR  = _BD(left=THIN, right=THIN, top=THIN, bottom=THIN)
+                CTR  = _AL(horizontal="center", vertical="center")
+                c0 = ws.cell(row=1, column=1, value="Resolver")
+                c0.fill=HDR; c0.font=HFNT; c0.alignment=CTR; c0.border=BDR
+                col_n = 2
+                col_map = {}
+                cats_seen = {}
+                for (cat, sub) in tbl.columns:
+                    col_map[(cat, sub)] = col_n
+                    if cat not in cats_seen:
+                        cats_seen[cat] = col_n
+                    col_n += 1
+                for cat, start_col in cats_seen.items():
+                    sub_count = sum(1 for (c2, _) in tbl.columns if c2 == cat)
+                    end_col = start_col + sub_count - 1
+                    if start_col != end_col:
+                        ws.merge_cells(start_row=1, start_column=start_col, end_row=1, end_column=end_col)
+                    cell = ws.cell(row=1, column=start_col, value=cat)
+                    cell.fill=HDR; cell.font=HFNT; cell.alignment=CTR; cell.border=BDR
+                c2h = ws.cell(row=2, column=1, value="Resolver")
+                c2h.fill=HDR; c2h.font=HFNT; c2h.alignment=CTR; c2h.border=BDR
+                for (cat, sub), cn in col_map.items():
+                    cell = ws.cell(row=2, column=cn, value=sub)
+                    cell.fill=HDR; cell.font=HFNT; cell.alignment=CTR; cell.border=BDR
+                data_rows_idx = [i for i in tbl.index if i != "Grand Total"]
+                for r_idx, resolver in enumerate(list(tbl.index), 3):
+                    is_grand = resolver == "Grand Total"
+                    cell = ws.cell(row=r_idx, column=1, value=resolver)
+                    cell.border = BDR
+                    if is_grand:
+                        cell.fill=GRN; cell.font=GFNT
+                    else:
+                        cell.font=NFT
+                    for (cat, sub), cn in col_map.items():
+                        raw = tbl.loc[resolver, (cat, sub)]
+                        try:
+                            val = float(raw) if not pd.isna(raw) else None
+                        except:
+                            val = None
+                        cell = ws.cell(row=r_idx, column=cn, value=val)
+                        cell.border=BDR; cell.alignment=CTR
+                        if is_grand:
+                            cell.fill=GRN; cell.font=GFNT
+                        else:
+                            cell.font=NFT
+                            if (cat, sub) in dwell_cols and val is not None:
+                                sv = [float(tbl.loc[i,(cat,sub)]) for i in data_rows_idx if not pd.isna(tbl.loc[i,(cat,sub)])]
+                                if len(sv) >= 2:
+                                    mn, mx = min(sv), max(sv)
+                                    if mx != mn:
+                                        norm = (val-mn)/(mx-mn)
+                                        if norm >= 0.85:   cell.fill=RED; cell.font=WFT
+                                        elif norm >= 0.65: cell.fill=ORG; cell.font=BFT
+                                        elif norm >= 0.45: cell.fill=YEL; cell.font=BFT
+                                        elif norm >= 0.2:  cell.fill=LGR; cell.font=BFT
+                                        else:              cell.fill=GRE; cell.font=WFT
+                for col_obj in ws.columns:
+                    mx = 0
+                    cl = _gcl(col_obj[0].column)
+                    for c in col_obj:
+                        try: mx = max(mx, len(str(c.value or "")))
+                        except: pass
+                    ws.column_dimensions[cl].width = min(mx + 3, 30)
+                buf = _io.BytesIO()
+                wb.save(buf)
+                buf.seek(0)
+                return buf.getvalue()
+
+            afm_excel = _build_afm_excel(afm_tbl, set(dwell_cs))
+            st.download_button(
+                "⬇️ Download AFM Performance (.xlsx)",
+                afm_excel, "AFM_Performance.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True, key="afm_perf_dl"
+            )
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                st.plotly_chart(donut_chart(afm_fdf, "Resolver", "Andons by Resolver"), use_container_width=True)
+            with c2:
+                st.plotly_chart(hbar_chart(afm_fdf, "Resolver", "Avg Resolve Time by Resolver"), use_container_width=True)
+
     # ── Tab: AFM General ──────────────────────────────────────────────────────
     with tab["📋 AFM General"]:
 
