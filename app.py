@@ -1209,11 +1209,17 @@ if _all_parts or uploaded_files:
             tc_df["% of Total"] = (tc_df["Count"] / tc_df["Count"].sum() * 100).round(1)
             tc_df["Avg Time (min)"] = tc_df["Andon Type"].map(
                 fdf.groupby("Andon Type")["Resolve_Min"].mean().round(2))
-            tc_df["Status"] = tc_df["Andon Type"].apply(
-                lambda t: "⚠️ Above target" if fdf[fdf["Andon Type"]==t]["Resolve_Min"].mean() > get_threshold(t) * 1.5
-                else ("⚠️ Borderline" if fdf[fdf["Andon Type"]==t]["Resolve_Min"].mean() > (get_threshold(t) or DEFAULT_THRESHOLD)
-                      else "✅ OK") if get_threshold(t) is not None else "—"
-            )
+            def _get_status(t):
+                threshold = get_threshold(t)
+                if threshold is None:
+                    return "—"
+                avg = fdf[fdf["Andon Type"] == t]["Resolve_Min"].mean()
+                if avg > threshold * 1.5:
+                    return "🚨 Above target"
+                elif avg > threshold:
+                    return "⚠️ Borderline"
+                return "✅ OK"
+            tc_df["Status"] = tc_df["Andon Type"].apply(_get_status)
             st.dataframe(tc_df.style.format({"Count": "{:,}", "% of Total": "{:.1f}%",
                                               "Avg Time (min)": "{:.2f}"}),
                          use_container_width=True, height=320)
