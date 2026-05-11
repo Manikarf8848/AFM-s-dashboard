@@ -145,36 +145,11 @@ st.markdown(f"""
 .badge-green  {{ background: rgba(76,175,80,0.15);  color: #4caf50; border: 1px solid rgba(76,175,80,0.4); }}
 .badge-blue   {{ background: rgba(121,134,203,0.15); color: {_accent}; border: 1px solid rgba(121,134,203,0.4); }}
 
-/* ── Scrollable tabs ── */
-div[data-testid="stTabs"] > div:first-child {{
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    flex-wrap: nowrap !important;
-    display: flex !important;
-    scrollbar-width: thin !important;
-    scrollbar-color: {_accent} transparent !important;
-    padding-bottom: 2px;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    gap: 2px;
-}}
-div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar {{
-    height: 4px;
-}}
-div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-track {{
-    background: transparent;
-}}
-div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-thumb {{
-    background: {_accent};
-    border-radius: 10px;
-}}
 div[data-testid="stTabs"] button {{
     font-weight: 600; font-size: 0.83rem;
     color: {_sub} !important;
     transition: color 0.2s ease, background 0.2s ease;
     border-radius: 6px 6px 0 0;
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
 }}
 div[data-testid="stTabs"] button:hover {{
     color: {_accent} !important;
@@ -894,75 +869,16 @@ if _all_parts or uploaded_files:
         else:
             st.info("💡 Install `reportlab` or `fpdf2` on your Streamlit Cloud to enable PDF downloads.")
 
-    # ── Column Filter Helper ──────────────────────────────────────────────────
-    def col_filters(df_in, tab_key, cols_override=None):
-        """Render compact per-column filter widgets; return filtered DataFrame."""
-        PRIORITY = ["Andon Type", "Resolver", "Zone", "Shift", "Blocking",
-                    "Equipment Type", "Equipment ID", "Creator", "Department", "Week"]
-        if cols_override:
-            filter_cols = [c for c in cols_override if c in df_in.columns]
-        else:
-            filter_cols = []
-            for col in PRIORITY:
-                if col in df_in.columns and 1 < df_in[col].nunique() <= 120:
-                    filter_cols.append(col)
-        if not filter_cols and "Date" not in df_in.columns:
-            return df_in
-        with st.expander(f"🔽 Column Filters ({len(filter_cols) + (1 if 'Date' in df_in.columns else 0)} available — click to expand)", expanded=False):
-            st.markdown(
-                f"<div style='font-size:0.75rem;color:{_sub};margin-bottom:6px;'>"
-                "Filter rows in this tab. Leave at <b>All</b> to include everything.</div>",
-                unsafe_allow_html=True
-            )
-            result = df_in.copy()
-            if "Date" in df_in.columns:
-                d_min, d_max = df_in["Date"].min(), df_in["Date"].max()
-                dc1, dc2 = st.columns(2)
-                with dc1:
-                    tab_date = st.date_input(
-                        "📅 Date range",
-                        value=(d_min, d_max),
-                        min_value=d_min, max_value=d_max,
-                        key=f"cf_date_{tab_key}"
-                    )
-                if len(tab_date) == 2:
-                    result = result[(result["Date"] >= tab_date[0]) & (result["Date"] <= tab_date[1])]
-            chunk_size = 4
-            chunks = [filter_cols[i:i+chunk_size] for i in range(0, len(filter_cols), chunk_size)]
-            for chunk in chunks:
-                fcols_ui = st.columns(len(chunk))
-                for fc_obj, col in zip(fcols_ui, chunk):
-                    with fc_obj:
-                        opts = ["All"] + sorted(result[col].dropna().astype(str).unique().tolist())
-                        chosen = st.selectbox(f"🔎 {col}", options=opts, key=f"cf_{tab_key}_{col}")
-                        if chosen != "All":
-                            result = result[result[col].astype(str) == chosen]
-            removed = len(df_in) - len(result)
-            if removed > 0:
-                st.markdown(
-                    f"<div style='font-size:0.75rem;color:#ffa726;margin-top:4px;'>"
-                    f"⚠️ Filters active — showing <b>{len(result):,}</b> of <b>{len(df_in):,}</b> rows "
-                    f"({removed:,} hidden)</div>", unsafe_allow_html=True
-                )
-            else:
-                st.markdown(
-                    f"<div style='font-size:0.75rem;color:#4caf50;margin-top:4px;'>"
-                    f"✅ No filters active — showing all <b>{len(result):,}</b> rows</div>",
-                    unsafe_allow_html=True
-                )
-        return result
-
     # ── Tab: Overview ─────────────────────────────────────────────────────────
     with tab["📊 Overview"]:
         tab_pdf_download("Overview", fdf)
-        fdf_ov = col_filters(fdf, "overview")
         st.markdown('<div class="sec-title">Dashboard Overview — Key Insights at a Glance</div>', unsafe_allow_html=True)
 
         ov1, ov2 = st.columns(2)
 
         with ov1:
             st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin-bottom:0.4rem;'>📊 Andons by Resolver (Top 15)</div>", unsafe_allow_html=True)
-            top_resolvers = (fdf_ov.groupby("Resolver")["Resolve_Min"].count()
+            top_resolvers = (fdf.groupby("Resolver")["Resolve_Min"].count()
                              .nlargest(15).reset_index()
                              .rename(columns={"Resolve_Min": "Andons"})
                              .sort_values("Andons"))
@@ -996,7 +912,7 @@ if _all_parts or uploaded_files:
 
         with ov2:
             st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin-bottom:0.4rem;'>🥧 Andon Types Distribution</div>", unsafe_allow_html=True)
-            type_counts_ov = fdf_ov["Andon Type"].value_counts().reset_index()
+            type_counts_ov = fdf["Andon Type"].value_counts().reset_index()
             type_counts_ov.columns = ["Andon Type", "Count"]
             fig_ov_pie = px.pie(
                 type_counts_ov.head(10), names="Andon Type", values="Count", hole=0.55,
@@ -1025,7 +941,7 @@ if _all_parts or uploaded_files:
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin:1rem 0 0.4rem;'>📈 Daily Andon Trend</div>", unsafe_allow_html=True)
-        daily_ov = (fdf_ov.groupby("Date").agg(
+        daily_ov = (fdf.groupby("Date").agg(
             Count=("Resolve_Min", "count"),
             Avg=("Resolve_Min", "mean")
         ).reset_index().sort_values("Date"))
@@ -1071,7 +987,7 @@ if _all_parts or uploaded_files:
 
         if optional_cols["Zone"]:
             st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin:1rem 0 0.4rem;'>🏢 Andons per Zone (Floor)</div>", unsafe_allow_html=True)
-            zone_counts = (fdf_ov.groupby("Zone")["Resolve_Min"].count()
+            zone_counts = (fdf.groupby("Zone")["Resolve_Min"].count()
                            .reset_index().rename(columns={"Resolve_Min": "Andons"})
                            .sort_values("Andons", ascending=False))
             fig_zone = px.bar(
@@ -1097,13 +1013,12 @@ if _all_parts or uploaded_files:
     # ── Tab: Leaderboard ──────────────────────────────────────────────────────
     with tab["🏆 Leaderboard"]:
         tab_pdf_download("Leaderboard", fdf)
-        fdf_lb = col_filters(fdf, "leaderboard", cols_override=["Andon Type","Zone","Shift","Date"])
-        lb = (fdf_lb.groupby("Resolver")
+        lb = (fdf.groupby("Resolver")
               .agg(Total_Andons=("Resolve_Min", "count"), Avg_Time=("Resolve_Min", "mean"))
               .reset_index())
         lb["Avg_Time"] = lb["Avg_Time"].round(2)
         lb["Efficiency"] = (lb["Total_Andons"] / lb["Avg_Time"]).round(2)
-        lb["Within_Threshold"] = fdf_lb.groupby("Resolver").apply(
+        lb["Within_Threshold"] = fdf.groupby("Resolver").apply(
             lambda g: g.apply(within_threshold, axis=1).mean() * 100
         ).round(1).values
         lb = lb.sort_values("Avg_Time").reset_index(drop=True)
@@ -1190,12 +1105,11 @@ if _all_parts or uploaded_files:
     # ── Tab: AFM Profile ──────────────────────────────────────────────────────
     with tab["👤 AFM Profile"]:
         tab_pdf_download("AFM_Profile", fdf)
-        fdf_pr = col_filters(fdf, "profile", cols_override=["Andon Type","Zone","Shift","Date"])
         st.markdown('<div class="sec-title">AFM Resolver Profile — Drill Down</div>', unsafe_allow_html=True)
 
-        resolver_list = sorted(fdf_pr["Resolver"].unique().tolist())
+        resolver_list = sorted(fdf["Resolver"].unique().tolist())
         sel_profile = st.selectbox("Select Resolver", resolver_list, key="profile_sel")
-        pdf = fdf_pr[fdf_pr["Resolver"] == sel_profile]
+        pdf = fdf[fdf["Resolver"] == sel_profile]
 
         p_total   = len(pdf)
         p_avg     = pdf["Resolve_Min"].mean()
@@ -1207,8 +1121,8 @@ if _all_parts or uploaded_files:
         best_day  = daily_p.nsmallest(1, "Avg").iloc[0] if not daily_p.empty else None
         worst_day = daily_p.nlargest(1, "Avg").iloc[0] if not daily_p.empty else None
 
-        is_fastest     = sel_profile == fdf_pr.groupby("Resolver")["Resolve_Min"].mean().idxmin()
-        is_most_active = sel_profile == fdf_pr.groupby("Resolver")["Resolve_Min"].count().idxmax()
+        is_fastest     = sel_profile == fdf.groupby("Resolver")["Resolve_Min"].mean().idxmin()
+        is_most_active = sel_profile == fdf.groupby("Resolver")["Resolve_Min"].count().idxmax()
         badge_html = ""
         if is_fastest:     badge_html += '<span class="badge badge-gold">⚡ Fastest</span>'
         if is_most_active: badge_html += '<span class="badge badge-blue">🔥 Most Active</span>'
@@ -1323,18 +1237,17 @@ if _all_parts or uploaded_files:
     # ── Tab: Root Cause Analysis ───────────────────────────────────────────────
     with tab["🔍 Root Cause"]:
         tab_pdf_download("Root_Cause", fdf)
-        fdf_rc = col_filters(fdf, "rootcause")
         st.markdown('<div class="sec-title">Root Cause Analysis — Recurring Issues</div>', unsafe_allow_html=True)
 
-        type_counts = fdf_rc["Andon Type"].value_counts()
+        type_counts = fdf["Andon Type"].value_counts()
         top_issue   = type_counts.index[0]
-        top_pct     = type_counts.iloc[0] / len(fdf_rc) * 100
+        top_pct     = type_counts.iloc[0] / len(fdf) * 100
 
         st.markdown(f"""
         <div class="rc-banner">
             <div class="rc-issue">🚨 Top Recurring Issue: {top_issue} ({top_pct:.1f}%)</div>
             <div class="rc-sub">
-                {int(type_counts.iloc[0]):,} of {len(fdf_rc):,} andons · Avg resolve time:
+                {int(type_counts.iloc[0]):,} of {len(fdf):,} andons · Avg resolve time:
                 {fdf[fdf['Andon Type']==top_issue]['Resolve_Min'].mean():.2f} min
             </div>
         </div>""", unsafe_allow_html=True)
@@ -1347,12 +1260,12 @@ if _all_parts or uploaded_files:
             tc_df.columns = ["Andon Type", "Count"]
             tc_df["% of Total"] = (tc_df["Count"] / tc_df["Count"].sum() * 100).round(1)
             tc_df["Avg Time (min)"] = tc_df["Andon Type"].map(
-                fdf_rc.groupby("Andon Type")["Resolve_Min"].mean().round(2))
+                fdf.groupby("Andon Type")["Resolve_Min"].mean().round(2))
             def _get_status(t):
                 threshold = get_threshold(t)
                 if threshold is None:
                     return "—"
-                avg = fdf_rc[fdf_rc["Andon Type"] == t]["Resolve_Min"].mean()
+                avg = fdf[fdf["Andon Type"] == t]["Resolve_Min"].mean()
                 if avg > threshold * 1.5:
                     return "🚨 Above target"
                 elif avg > threshold:
@@ -1377,7 +1290,7 @@ if _all_parts or uploaded_files:
         with rc3:
             st.markdown('<div class="sec-title">⏰ Peak Hours by Andon Type (Top 5 Types)</div>', unsafe_allow_html=True)
             top5_types = type_counts.head(5).index.tolist()
-            hour_type = (fdf_rc[fdf_rc["Andon Type"].isin(top5_types)]
+            hour_type = (fdf[fdf["Andon Type"].isin(top5_types)]
                          .groupby(["Hour", "Andon Type"])["Resolve_Min"].count().reset_index()
                          .rename(columns={"Resolve_Min": "Count"}))
             fig_rc_heat = px.bar(hour_type, x="Hour", y="Count", color="Andon Type",
@@ -1391,7 +1304,7 @@ if _all_parts or uploaded_files:
 
         with rc4:
             st.markdown('<div class="sec-title">📅 Week-over-Week Top Issue Trend</div>', unsafe_allow_html=True)
-            wow = (fdf_rc[fdf_rc["Andon Type"].isin(top5_types)]
+            wow = (fdf[fdf["Andon Type"].isin(top5_types)]
                    .groupby(["Week", "Andon Type"])["Resolve_Min"].count().reset_index()
                    .rename(columns={"Resolve_Min": "Count"}))
             wow["Week"] = "Wk " + wow["Week"].astype(str)
@@ -1406,17 +1319,17 @@ if _all_parts or uploaded_files:
 
         if optional_cols["Zone"]:
             st.markdown('<div class="sec-title">📍 Top Issue per Zone</div>', unsafe_allow_html=True)
-            zone_top = (fdf_rc.groupby(["Zone", "Andon Type"])["Resolve_Min"].count()
+            zone_top = (fdf.groupby(["Zone", "Andon Type"])["Resolve_Min"].count()
                         .reset_index().rename(columns={"Resolve_Min": "Count"})
                         .sort_values("Count", ascending=False)
                         .groupby("Zone").first().reset_index())
             zone_top.columns = ["Zone", "Top Andon Type", "Count"]
             zone_top["% in Zone"] = zone_top.apply(
-                lambda r: f"{r['Count'] / fdf_rc[fdf_rc['Zone']==r['Zone']]['Resolve_Min'].count() * 100:.1f}%", axis=1)
+                lambda r: f"{r['Count'] / fdf[fdf['Zone']==r['Zone']]['Resolve_Min'].count() * 100:.1f}%", axis=1)
             st.dataframe(zone_top, use_container_width=True)
 
         st.markdown('<div class="sec-title">🧑‍💻 Slowest Resolvers — Flagged Above Threshold</div>', unsafe_allow_html=True)
-        slow_df = (fdf_rc.groupby("Resolver")["Resolve_Min"]
+        slow_df = (fdf.groupby("Resolver")["Resolve_Min"]
                    .agg(Count="count", Avg="mean").reset_index()
                    .sort_values("Avg", ascending=False))
         slow_df["Status"] = slow_df["Avg"].apply(
@@ -1437,10 +1350,9 @@ if _all_parts or uploaded_files:
     # ── Tab: AFM Performance ──────────────────────────────────────────────────
     with tab["AFM Performance"]:
         tab_pdf_download("AFM_Performance", fdf)
-        fdf_afmperf = col_filters(fdf, "afmperf", cols_override=["Resolver","Zone","Shift","Date"])
         st.markdown('<div class="sec-title">Count and Average Dwell Time by Resolver × Andon Type</div>', unsafe_allow_html=True)
 
-        all_andon_types_afm = sorted(fdf_afmperf["Andon Type"].dropna().unique().tolist())
+        all_andon_types_afm = sorted(fdf["Andon Type"].dropna().unique().tolist())
         sel_andon_types_afm = st.multiselect(
             "🔽 Filter by Andon Type (leave empty = show all)",
             options=all_andon_types_afm,
@@ -1448,7 +1360,7 @@ if _all_parts or uploaded_files:
             key="afm_perf_andon_filter",
             help="Select one or more Andon Types to narrow the table and charts below."
         )
-        afm_fdf = fdf_afmperf[fdf_afmperf["Andon Type"].isin(sel_andon_types_afm)] if sel_andon_types_afm else fdf_afmperf.copy()
+        afm_fdf = fdf[fdf["Andon Type"].isin(sel_andon_types_afm)] if sel_andon_types_afm else fdf.copy()
 
         if afm_fdf.empty:
             st.warning("No data matches the selected Andon Type filter.")
@@ -2048,26 +1960,24 @@ if _all_parts or uploaded_files:
     # ── Tab: By Andon Type ────────────────────────────────────────────────────
     with tab["By Andon Type"]:
         tab_pdf_download("By_Andon_Type", fdf)
-        fdf_at = col_filters(fdf, "bytype", cols_override=["Resolver","Zone","Shift","Date"])
         st.markdown('<div class="sec-title">Number of Andons and Dwell Time by Date × Andon Type</div>', unsafe_allow_html=True)
-        tbl_at = build_group_pivot(fdf_at, "Andon Type")
+        tbl_at = build_group_pivot(fdf, "Andon Type")
         st.dataframe(apply_pivot_style(tbl_at), use_container_width=True, height=400)
         c1, c2 = st.columns(2)
         with c1:
-            st.plotly_chart(donut_chart(fdf_at, "Andon Type", "Andons by Type"), use_container_width=True)
+            st.plotly_chart(donut_chart(fdf, "Andon Type", "Andons by Type"), use_container_width=True)
         with c2:
-            st.plotly_chart(hbar_chart(fdf_at, "Andon Type", "Avg Resolve Time by Andon Type"), use_container_width=True)
+            st.plotly_chart(hbar_chart(fdf, "Andon Type", "Avg Resolve Time by Andon Type"), use_container_width=True)
 
     # ── Tab: Weekly Breakdown ─────────────────────────────────────────────────
     with tab["Weekly Breakdown"]:
         tab_pdf_download("Weekly_Breakdown", fdf)
-        fdf_wk = col_filters(fdf, "weekly", cols_override=["Andon Type","Resolver","Zone","Shift"])
-        weeks_avail = sorted(fdf_wk["Week"].dropna().unique(), reverse=True)
+        weeks_avail = sorted(fdf["Week"].dropna().unique(), reverse=True)
 
         st.markdown('<div class="sec-title">Andons by Type and Week</div>', unsafe_allow_html=True)
-        week_count_p = fdf_wk.pivot_table(index="Andon Type", columns="Week",
+        week_count_p = fdf.pivot_table(index="Andon Type", columns="Week",
                                        values="Resolve_Min", aggfunc="count", fill_value=0)
-        week_avg_p   = fdf_wk.pivot_table(index="Andon Type", columns="Week",
+        week_avg_p   = fdf.pivot_table(index="Andon Type", columns="Week",
                                        values="Resolve_Min", aggfunc="mean")
 
         week_cols = {}
@@ -2085,11 +1995,11 @@ if _all_parts or uploaded_files:
 
         wk_grand = {}
         for w in weeks_avail:
-            sub_w = fdf_wk[fdf_wk["Week"] == w]
+            sub_w = fdf[fdf["Week"] == w]
             wk_grand[(f"Wk {w}", "Andons")]   = int(sub_w["Resolve_Min"].count())
             wk_grand[(f"Wk {w}", "Avg Time")] = round(sub_w["Resolve_Min"].mean(), 2)
-        wk_grand[("Total", "Andons")]   = int(fdf_wk["Resolve_Min"].count())
-        wk_grand[("Total", "Avg Time")] = round(fdf_wk["Resolve_Min"].mean(), 2)
+        wk_grand[("Total", "Andons")]   = int(fdf["Resolve_Min"].count())
+        wk_grand[("Total", "Avg Time")] = round(fdf["Resolve_Min"].mean(), 2)
 
         wk_grand_row = pd.DataFrame(wk_grand, index=["Grand Total"])
         wk_grand_row.columns = pd.MultiIndex.from_tuples(wk_grand_row.columns)
@@ -2117,9 +2027,9 @@ if _all_parts or uploaded_files:
 
         st.markdown('<div class="sec-title">AFM Performance by Week (Resolver × Week)</div>', unsafe_allow_html=True)
 
-        afm_wk_cnt = fdf_wk.pivot_table(index="Resolver", columns="Week",
+        afm_wk_cnt = fdf.pivot_table(index="Resolver", columns="Week",
                                      values="Resolve_Min", aggfunc="count", fill_value=0)
-        afm_wk_avg = fdf_wk.pivot_table(index="Resolver", columns="Week",
+        afm_wk_avg = fdf.pivot_table(index="Resolver", columns="Week",
                                      values="Resolve_Min", aggfunc="mean")
 
         afm_wk_cols = {}
@@ -2245,41 +2155,38 @@ if _all_parts or uploaded_files:
     if optional_cols["Equipment Type"]:
         with tab["By Equipment Type"]:
             tab_pdf_download("By_Equipment_Type", fdf)
-            fdf_et = col_filters(fdf, "eqtype", cols_override=["Resolver","Zone","Shift","Andon Type","Date"])
             st.markdown('<div class="sec-title">Number of Andons and Resolution Times by Equipment Type</div>', unsafe_allow_html=True)
-            tbl_et = build_group_pivot(fdf_et, "Equipment Type")
+            tbl_et = build_group_pivot(fdf, "Equipment Type")
             st.dataframe(apply_pivot_style(tbl_et), use_container_width=True, height=400)
             c1, c2 = st.columns(2)
             with c1:
-                st.plotly_chart(donut_chart(fdf_et, "Equipment Type", "Andons by Equipment Type"), use_container_width=True)
+                st.plotly_chart(donut_chart(fdf, "Equipment Type", "Andons by Equipment Type"), use_container_width=True)
             with c2:
-                st.plotly_chart(hbar_chart(fdf_et, "Equipment Type", "Avg Resolve Time by Equipment Type"), use_container_width=True)
+                st.plotly_chart(hbar_chart(fdf, "Equipment Type", "Avg Resolve Time by Equipment Type"), use_container_width=True)
 
     if optional_cols["Zone"]:
         with tab["By Zone"]:
             tab_pdf_download("By_Zone", fdf)
-            fdf_z = col_filters(fdf, "byzone", cols_override=["Resolver","Shift","Andon Type","Equipment Type","Date"])
             st.markdown('<div class="sec-title">Count of Resolver and Avg Dwell Time by Creation Date and Zone</div>', unsafe_allow_html=True)
-            tbl_z = build_group_pivot(fdf_z, "Zone")
+            tbl_z = build_group_pivot(fdf, "Zone")
             st.dataframe(apply_pivot_style(tbl_z), use_container_width=True, height=400)
             c1, c2 = st.columns(2)
             with c1:
-                st.plotly_chart(donut_chart(fdf_z, "Zone", "Count of Records by Zone"), use_container_width=True)
+                st.plotly_chart(donut_chart(fdf, "Zone", "Count of Records by Zone"), use_container_width=True)
             with c2:
-                st.plotly_chart(hbar_chart(fdf_z, "Zone", "Avg Dwell Time by Zone"), use_container_width=True)
+                st.plotly_chart(hbar_chart(fdf, "Zone", "Avg Dwell Time by Zone"), use_container_width=True)
 
     if optional_cols["Shift"]:
         with tab["By Shift"]:
             tab_pdf_download("By_Shift", fdf)
-            fdf_sh = col_filters(fdf, "byshift", cols_override=["Resolver","Zone","Andon Type","Equipment Type","Date"])
             st.markdown('<div class="sec-title">Count of Resolver and Avg Dwell Time by Creation Date and Shift</div>', unsafe_allow_html=True)
-            tbl_sh = build_group_pivot(fdf_sh, "Shift")
+            tbl_sh = build_group_pivot(fdf, "Shift")
             st.dataframe(apply_pivot_style(tbl_sh), use_container_width=True, height=400)
             c1, c2 = st.columns(2)
             with c1:
-                st.plotly_chart(donut_chart(fdf_sh, "Shift", "Count of Resolver by Shift"), use_container_width=True)
+                st.plotly_chart(donut_chart(fdf, "Shift", "Count of Resolver by Shift"), use_container_width=True)
             with c2:
-                st.plotly_chart(hbar_chart(fdf_sh, "Shift", "Avg Dwell Time by Shift"), use_container_width=True)
+                st.plotly_chart(hbar_chart(fdf, "Shift", "Avg Dwell Time by Shift"), use_container_width=True)
 
     if optional_cols["Blocking"]:
         with tab["Blocking Analysis"]:
@@ -2808,31 +2715,9 @@ if _all_parts or uploaded_files:
                         # Per department detail
                         for dept in DEPT_COLORS.keys():
                             sub = dept_bl_df[dept_bl_df["Department"] == dept]
-
                             if sub.empty:
                                 continue
-
-                            try:
-                                dept_color = DEPT_COLORS.get(dept, "4F46E5")
-
-                                if dept_color.startswith("#"):
-                                    dept_color = dept_color[1:]
-
-                                line_color = rl_colors.HexColor(dept_color)
-
-                            except Exception:
-                                line_color = rl_colors.HexColor("4F46E5")
-
-                            story_p.append(
-                                HRFlowable(
-                                    width="100%",
-                                    thickness=2,
-                                    color=line_color
-                                )
-                            )
-                        
-                        
-                           
+                            story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(DEPT_COLORS[dept])))
                             story_p.append(Paragraph(f"{dept} — {len(sub):,} blocking andons · {sub['Resolve_Min'].sum()/60:.2f} hrs lost", h2_style))
                             # Andon type breakdown
                             type_data = [["Andon Type","Count","Hrs Lost","Avg (min)","% of Dept"]]
@@ -2886,429 +2771,67 @@ if _all_parts or uploaded_files:
     if optional_cols["Equipment ID"]:
         with tab["Equipment ID Analysis"]:
             tab_pdf_download("Equipment_ID_Analysis", fdf)
+            st.markdown('<div class="sec-title">Count of Problem Id by Equipment ID and Week Number</div>', unsafe_allow_html=True)
+            eid_weeks = sorted(fdf["Week"].dropna().unique(), reverse=True)
+            eid_count_p = fdf.pivot_table(index="Equipment ID", columns="Week",
+                                          values="Resolve_Min", aggfunc="count", fill_value=0)
+            eid_cols = {}
+            for w in eid_weeks:
+                if w in eid_count_p.columns:
+                    eid_cols[f"Wk {w}"] = eid_count_p[w].astype(int)
+            eid_cols["Total"] = eid_count_p[eid_weeks].sum(axis=1).astype(int)
+            eid_tbl = pd.DataFrame(eid_cols).sort_values("Total", ascending=False)
+            eid_tbl.index.name = "Equipment ID"
+            eid_grand = {f"Wk {w}": int(fdf[fdf["Week"] == w]["Resolve_Min"].count()) for w in eid_weeks if w in eid_count_p.columns}
+            eid_grand["Total"] = int(fdf["Resolve_Min"].count())
+            eid_grand_row = pd.DataFrame(eid_grand, index=["Grand Total"])
+            # Grand Total at BOTTOM
+            eid_tbl = pd.concat([eid_tbl, eid_grand_row])
 
-            # ── Per-tab column filters ────────────────────────────────────────
-            fdf_eid = col_filters(fdf, "eid", cols_override=["Andon Type","Resolver","Zone","Shift","Date"])
+            def _style_eid(data):
+                s = pd.DataFrame("", index=data.index, columns=data.columns)
+                if "Grand Total" in data.index:
+                    s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
+                return s
 
-            st.markdown('<div class="sec-title">🔧 Equipment ID — Detailed Analysis</div>', unsafe_allow_html=True)
+            st.dataframe(eid_tbl.style.apply(_style_eid, axis=None).format("{:,.0f}", na_rep="—"),
+                         use_container_width=True, height=420)
+            c1, c2 = st.columns(2)
+            with c1:
+                top20_eid = (fdf.groupby("Equipment ID")["Resolve_Min"].count()
+                             .nlargest(20).reset_index().rename(columns={"Resolve_Min": "Count"}))
+                fig_eid_pie = px.pie(top20_eid, names="Equipment ID", values="Count",
+                                    title="Top 20 Equipment IDs by Andon Count",
+                                    color_discrete_sequence=px.colors.qualitative.Alphabet)
+                fig_eid_pie.update_traces(textinfo="percent+label", textposition="inside")
+                fig_eid_pie.update_layout(height=450, showlegend=False, margin=dict(t=50, b=10, l=0, r=0))
+                st.plotly_chart(fig_eid_pie, use_container_width=True)
+            with c2:
+                top20_avg = (fdf.groupby("Equipment ID")["Resolve_Min"].agg(["count", "mean"])
+                             .reset_index().nlargest(20, "count")
+                             .rename(columns={"count": "Andons", "mean": "Avg Time (min)"}))
+                fig_eid_bar = px.bar(top20_avg.sort_values("Avg Time (min)", ascending=True),
+                                     x="Avg Time (min)", y="Equipment ID", orientation="h",
+                                     color="Avg Time (min)", color_continuous_scale="Blues",
+                                     text=top20_avg.sort_values("Avg Time (min)")["Avg Time (min)"].round(2),
+                                     title="Avg Dwell Time — Top 20 Equipment IDs")
+                fig_eid_bar.update_traces(textposition="outside")
+                fig_eid_bar.update_layout(coloraxis_showscale=False, height=450,
+                                          yaxis_title="", xaxis_title="Avg Dwell Time (min)",
+                                          margin=dict(t=50, b=10, l=0, r=0))
+                st.plotly_chart(fig_eid_bar, use_container_width=True)
 
-            if fdf_eid.empty or "Equipment ID" not in fdf_eid.columns:
-                st.warning("No Equipment ID data available.")
-            else:
-                eid_weeks_all = sorted(fdf_eid["Week"].dropna().unique(), reverse=True)
-
-                # ── EID-level search / filter ─────────────────────────────────
-                eid_search_col, eid_dept_col = st.columns([2, 2])
-                with eid_search_col:
-                    eid_search = st.text_input("🔎 Search Equipment ID", "", key="eid_search",
-                                               placeholder="Type an ID, e.g. 2319")
-                with eid_dept_col:
-                    dept_opts_eid = ["All Departments", "ARSAW", "PTR", "ARStow", "Universal"]
-                    eid_dept_filter = st.selectbox("🏭 Filter by Department", dept_opts_eid, key="eid_dept")
-
-                # Apply EID-level filters
-                fdf_eid_view = fdf_eid.copy()
-                fdf_eid_view["Department"] = fdf_eid_view["Equipment ID"].apply(
-                    lambda x: get_department(str(x).strip()) if not pd.isna(x) else "Universal"
-                )
-                if eid_search.strip():
-                    fdf_eid_view = fdf_eid_view[
-                        fdf_eid_view["Equipment ID"].astype(str).str.contains(eid_search.strip(), case=False, na=False)
-                    ]
-                if eid_dept_filter != "All Departments":
-                    fdf_eid_view = fdf_eid_view[fdf_eid_view["Department"] == eid_dept_filter]
-
-                if fdf_eid_view.empty:
-                    st.warning("No Equipment IDs match the current filter.")
-                else:
-                    # ── KPI strip ─────────────────────────────────────────────
-                    ek1, ek2, ek3, ek4, ek5 = st.columns(5)
-                    for eb, elbl, eval_, esub in [
-                        (ek1, "Unique Equipment IDs", f"{fdf_eid_view['Equipment ID'].nunique():,}", "in filtered view"),
-                        (ek2, "Total Andons",          f"{len(fdf_eid_view):,}",                     "on these IDs"),
-                        (ek3, "Avg Dwell Time",        f"{fdf_eid_view['Resolve_Min'].mean():.2f} min", "per andon"),
-                        (ek4, "Worst ID Avg",
-                              fdf_eid_view.groupby("Equipment ID")["Resolve_Min"].mean().idxmax()
-                              if len(fdf_eid_view) > 0 else "—",
-                              f"{fdf_eid_view.groupby('Equipment ID')['Resolve_Min'].mean().max():.2f} min avg" if len(fdf_eid_view) > 0 else ""),
-                        (ek5, "Most Active ID",
-                              fdf_eid_view.groupby("Equipment ID")["Resolve_Min"].count().idxmax()
-                              if len(fdf_eid_view) > 0 else "—",
-                              f"{fdf_eid_view.groupby('Equipment ID')['Resolve_Min'].count().max()} andons" if len(fdf_eid_view) > 0 else ""),
-                    ]:
-                        eb.markdown(f"""
-                        <div class="kpi-box">
-                            <div class="kpi-label">{elbl}</div>
-                            <div class="kpi-value" style="font-size:1.4rem;">{eval_}</div>
-                            <div class="kpi-sub">{esub}</div>
-                        </div>""", unsafe_allow_html=True)
-
-                    st.markdown("<br>", unsafe_allow_html=True)
-
-                    # ── Week × Equipment ID pivot ─────────────────────────────
-                    st.markdown('<div class="sec-title">📅 Andons by Equipment ID × Week</div>', unsafe_allow_html=True)
-                    eid_count_p = fdf_eid_view.pivot_table(
-                        index="Equipment ID", columns="Week",
-                        values="Resolve_Min", aggfunc="count", fill_value=0
-                    )
-                    eid_avg_p = fdf_eid_view.pivot_table(
-                        index="Equipment ID", columns="Week",
-                        values="Resolve_Min", aggfunc="mean"
-                    )
-                    eid_wk_cols = {}
-                    for w in eid_weeks_all:
-                        if w in eid_count_p.columns:
-                            eid_wk_cols[(f"Wk {w}", "Count")]    = eid_count_p[w].astype(int)
-                            eid_wk_cols[(f"Wk {w}", "Avg (min)")] = eid_avg_p[w].round(2) if w in eid_avg_p.columns else pd.Series(dtype=float)
-                    eid_wk_cols[("Total", "Count")]    = eid_count_p[eid_weeks_all].sum(axis=1).astype(int)
-                    eid_wk_cols[("Total", "Avg (min)")] = fdf_eid_view.groupby("Equipment ID")["Resolve_Min"].mean().round(2)
-
-                    eid_wk_tbl = pd.DataFrame(eid_wk_cols).sort_values(("Total","Count"), ascending=False)
-                    eid_wk_tbl.index.name = "Equipment ID"
-
-                    # Add department column
-                    dept_map = fdf_eid_view.groupby("Equipment ID")["Department"].first()
-                    eid_wk_tbl.insert(0, "Dept", eid_wk_tbl.index.map(dept_map))
-
-                    # Grand Total row
-                    eid_gt = {"Dept": "ALL"}
-                    for w in eid_weeks_all:
-                        if w in eid_count_p.columns:
-                            sw = fdf_eid_view[fdf_eid_view["Week"] == w]
-                            eid_gt[(f"Wk {w}", "Count")]     = int(sw["Resolve_Min"].count())
-                            eid_gt[(f"Wk {w}", "Avg (min)")] = round(sw["Resolve_Min"].mean(), 2)
-                    eid_gt[("Total","Count")]     = len(fdf_eid_view)
-                    eid_gt[("Total","Avg (min)")] = round(fdf_eid_view["Resolve_Min"].mean(), 2)
-                    eid_gt_row = pd.DataFrame(eid_gt, index=["Grand Total"])
-                    eid_wk_tbl.columns = pd.MultiIndex.from_tuples(
-                        [("Info","Dept")] + list(eid_wk_tbl.columns[1:])
-                    )
-                    eid_gt_row.columns = pd.MultiIndex.from_tuples(
-                        [("Info","Dept")] + [(f"Wk {w}", c) for w in eid_weeks_all for c in ["Count","Avg (min)"] if w in eid_count_p.columns] +
-                        [("Total","Count"), ("Total","Avg (min)")]
-                    ) if len(eid_gt_row.columns) == len(eid_wk_tbl.columns) else eid_wk_tbl.columns[:len(eid_gt_row.columns)]
-
-                    try:
-                        eid_wk_full = pd.concat([eid_wk_tbl, eid_gt_row])
-                    except Exception:
-                        eid_wk_full = eid_wk_tbl.copy()
-
-                    avg_cols_eid = [c for c in eid_wk_full.columns if "Avg" in str(c[1])]
-                    cnt_cols_eid = [c for c in eid_wk_full.columns if "Count" in str(c[1])]
-
-                    def _style_eid_wk(data):
-                        s = pd.DataFrame("", index=data.index, columns=data.columns)
-                        dr = [i for i in data.index if i != "Grand Total"]
-                        for col in avg_cols_eid:
-                            if col in data.columns:
-                                ser = data.loc[dr, col]
-                                for idx in dr:
-                                    s.loc[idx, col] = dwell_color(data.loc[idx, col], ser)
-                        # Dept colour coding
-                        dept_clrs = {"ARSAW":"#7986cb","PTR":"#66bb6a","ARStow":"#ffa726","Universal":"#ef5350","ALL":"#9c27b0"}
-                        for idx in dr:
-                            try:
-                                d = str(data.loc[idx, ("Info","Dept")])
-                                clr = dept_clrs.get(d, "")
-                                if clr:
-                                    s.loc[idx, ("Info","Dept")] = f"font-weight:700;color:{clr}"
-                            except Exception:
-                                pass
-                        if "Grand Total" in data.index:
-                            s.loc["Grand Total"] = "font-weight:700;background-color:#e8eaf6;color:#1a237e"
-                        return s
-
-                    fmt_eid = {c: "{:.2f}" for c in avg_cols_eid}
-                    fmt_eid.update({c: "{:,.0f}" for c in cnt_cols_eid})
-                    st.dataframe(
-                        eid_wk_full.style.apply(_style_eid_wk, axis=None).format(fmt_eid, na_rep="—"),
-                        use_container_width=True, height=420
-                    )
-
-                    st.markdown("<br>", unsafe_allow_html=True)
-
-                    # ── Charts row 1: Top IDs ─────────────────────────────────
-                    st.markdown('<div class="sec-title">📊 Visual Breakdown</div>', unsafe_allow_html=True)
-                    ec1, ec2 = st.columns(2)
-
-                    with ec1:
-                        st.markdown(f"<div style='font-size:0.82rem;font-weight:700;color:{_text};margin-bottom:4px;'>Top 20 Equipment IDs — Andon Count</div>", unsafe_allow_html=True)
-                        top20_eid = (fdf_eid_view.groupby("Equipment ID")["Resolve_Min"].count()
-                                     .nlargest(20).reset_index().rename(columns={"Resolve_Min": "Count"})
-                                     .sort_values("Count"))
-                        top20_eid["Dept"] = top20_eid["Equipment ID"].apply(lambda x: get_department(str(x)))
-                        fig_eid_bar2 = px.bar(
-                            top20_eid, x="Count", y="Equipment ID", orientation="h",
-                            color="Dept", color_discrete_map=DEPT_COLORS,
-                            text="Count"
-                        )
-                        fig_eid_bar2.update_traces(textposition="outside")
-                        fig_eid_bar2.update_layout(
-                            height=460, yaxis_title="", xaxis_title="Andon Count",
-                            margin=dict(t=10, b=10, l=0, r=40),
-                            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                            font=dict(color=_text),
-                            xaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
-                            yaxis=dict(color=_text),
-                            legend=dict(orientation="h", y=-0.15, font_size=10)
-                        )
-                        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-                        st.plotly_chart(fig_eid_bar2, use_container_width=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    with ec2:
-                        st.markdown(f"<div style='font-size:0.82rem;font-weight:700;color:{_text};margin-bottom:4px;'>Top 20 Equipment IDs — Avg Dwell Time</div>", unsafe_allow_html=True)
-                        top20_avg2 = (fdf_eid_view.groupby("Equipment ID")
-                                      .agg(Count=("Resolve_Min","count"), Avg=("Resolve_Min","mean"))
-                                      .reset_index().nlargest(20, "Count")
-                                      .sort_values("Avg", ascending=True))
-                        top20_avg2["Dept"] = top20_avg2["Equipment ID"].apply(lambda x: get_department(str(x)))
-                        top20_avg2["Color"] = top20_avg2["Avg"].apply(
-                            lambda x: "rgb(210,40,40)" if x > DEFAULT_THRESHOLD*1.5
-                            else "rgb(255,140,0)" if x > DEFAULT_THRESHOLD else "rgb(60,180,60)"
-                        )
-                        fig_eid_avg2 = go.Figure(go.Bar(
-                            x=top20_avg2["Avg"].round(2),
-                            y=top20_avg2["Equipment ID"].astype(str),
-                            orientation="h",
-                            marker_color=top20_avg2["Color"].tolist(),
-                            text=top20_avg2["Avg"].round(2),
-                            textposition="outside",
-                            customdata=top20_avg2["Count"],
-                            hovertemplate="<b>%{y}</b><br>Avg: %{x:.2f} min<br>Andons: %{customdata}<extra></extra>"
-                        ))
-                        fig_eid_avg2.add_vline(x=DEFAULT_THRESHOLD, line_dash="dash", line_color="gray",
-                                               annotation_text=f"Target ({DEFAULT_THRESHOLD} min)")
-                        fig_eid_avg2.update_layout(
-                            height=460, xaxis_title="Avg Dwell Time (min)", yaxis_title="",
-                            margin=dict(t=10, b=10, l=0, r=40),
-                            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                            font=dict(color=_text),
-                            xaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
-                            yaxis=dict(color=_text)
-                        )
-                        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-                        st.plotly_chart(fig_eid_avg2, use_container_width=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    # ── Charts row 2: Distribution & Trend ────────────────────
-                    ec3, ec4 = st.columns(2)
-
-                    with ec3:
-                        st.markdown(f"<div style='font-size:0.82rem;font-weight:700;color:{_text};margin:1rem 0 4px;'>🥧 Distribution by Department</div>", unsafe_allow_html=True)
-                        dept_dist = fdf_eid_view.groupby("Department")["Resolve_Min"].count().reset_index()
-                        dept_dist.columns = ["Department","Count"]
-                        fig_dept_dist = px.pie(
-                            dept_dist, names="Department", values="Count", hole=0.55,
-                            color="Department", color_discrete_map=DEPT_COLORS
-                        )
-                        fig_dept_dist.update_traces(textinfo="percent+label")
-                        fig_dept_dist.add_annotation(
-                            text=f"<b>{dept_dist['Count'].sum():,}</b>",
-                            x=0.5, y=0.5, font_size=20, font_color=_text, showarrow=False
-                        )
-                        fig_dept_dist.update_layout(
-                            height=340, showlegend=False,
-                            margin=dict(t=10, b=10, l=0, r=0),
-                            paper_bgcolor="rgba(0,0,0,0)", font=dict(color=_text)
-                        )
-                        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-                        st.plotly_chart(fig_dept_dist, use_container_width=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    with ec4:
-                        st.markdown(f"<div style='font-size:0.82rem;font-weight:700;color:{_text};margin:1rem 0 4px;'>📈 Daily Andon Trend for Equipment IDs</div>", unsafe_allow_html=True)
-                        eid_daily = fdf_eid_view.groupby("Date").agg(
-                            Count=("Resolve_Min","count"),
-                            Avg=("Resolve_Min","mean")
-                        ).reset_index()
-                        fig_eid_trend = go.Figure()
-                        fig_eid_trend.add_trace(go.Bar(
-                            x=eid_daily["Date"], y=eid_daily["Count"],
-                            name="Daily Andons", marker_color=_accent,
-                            opacity=0.7
-                        ))
-                        fig_eid_trend.add_trace(go.Scatter(
-                            x=eid_daily["Date"], y=eid_daily["Avg"].round(2),
-                            name="Avg Time (min)", yaxis="y2",
-                            line=dict(color="#ffa726", width=2, dash="dot"),
-                            marker=dict(size=5)
-                        ))
-                        fig_eid_trend.add_hline(
-                            y=DEFAULT_THRESHOLD, line_dash="dash", line_color="#ef5350",
-                            annotation_text=f"Target ({DEFAULT_THRESHOLD}min)", yref="y2"
-                        )
-                        fig_eid_trend.update_layout(
-                            height=340,
-                            yaxis=dict(title="Count", gridcolor="#333" if DM else "#eee", color=_text),
-                            yaxis2=dict(title="Avg (min)", overlaying="y", side="right", showgrid=False, color="#ffa726"),
-                            legend=dict(orientation="h", y=-0.2, font_size=10),
-                            margin=dict(t=10, b=20, l=0, r=60),
-                            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                            font=dict(color=_text),
-                            xaxis=dict(gridcolor="#333" if DM else "#eee", color=_text)
-                        )
-                        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
-                        st.plotly_chart(fig_eid_trend, use_container_width=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    # ── Andon type breakdown per EID ──────────────────────────
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown('<div class="sec-title">🔍 Andon Type Breakdown by Equipment ID</div>', unsafe_allow_html=True)
-
-                    eid_type_pivot = fdf_eid_view.pivot_table(
-                        index="Equipment ID", columns="Andon Type",
-                        values="Resolve_Min", aggfunc="count", fill_value=0
-                    ).astype(int)
-                    eid_type_pivot["Total"] = eid_type_pivot.sum(axis=1)
-                    eid_type_pivot["Avg Dwell (min)"] = fdf_eid_view.groupby("Equipment ID")["Resolve_Min"].mean().round(2)
-                    eid_type_pivot["Department"] = eid_type_pivot.index.map(
-                        lambda x: get_department(str(x))
-                    )
-                    # Reorder cols: Dept first
-                    cols_order = ["Department","Total","Avg Dwell (min)"] + [c for c in eid_type_pivot.columns if c not in ["Department","Total","Avg Dwell (min)"]]
-                    eid_type_pivot = eid_type_pivot[cols_order].sort_values("Total", ascending=False)
-
-                    def _style_eid_type(data):
-                        s = pd.DataFrame("", index=data.index, columns=data.columns)
-                        dept_clrs2 = {"ARSAW":"color:#7986cb;font-weight:700","PTR":"color:#66bb6a;font-weight:700",
-                                      "ARStow":"color:#ffa726;font-weight:700","Universal":"color:#ef5350;font-weight:700"}
-                        for idx in data.index:
-                            try:
-                                d = str(data.loc[idx,"Department"])
-                                if d in dept_clrs2:
-                                    s.loc[idx,"Department"] = dept_clrs2[d]
-                            except Exception:
-                                pass
-                            try:
-                                avg = float(data.loc[idx,"Avg Dwell (min)"])
-                                if avg > DEFAULT_THRESHOLD*1.5:
-                                    s.loc[idx,"Avg Dwell (min)"] = "background-color:rgb(210,40,40);color:white;font-weight:700"
-                                elif avg > DEFAULT_THRESHOLD:
-                                    s.loc[idx,"Avg Dwell (min)"] = "background-color:rgb(255,140,0);color:black;font-weight:700"
-                                else:
-                                    s.loc[idx,"Avg Dwell (min)"] = "background-color:rgb(60,180,60);color:white;font-weight:700"
-                            except Exception:
-                                pass
-                        return s
-
-                    st.dataframe(
-                        eid_type_pivot.style.apply(_style_eid_type, axis=None)
-                        .format({"Avg Dwell (min)": "{:.2f}", "Total": "{:,}"}, na_rep="—"),
-                        use_container_width=True, height=400
-                    )
-
-                    # ── Single EID drill-down ─────────────────────────────────
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown('<div class="sec-title">🔬 Single Equipment ID — Full Drill-Down</div>', unsafe_allow_html=True)
-                    all_eids = sorted(fdf_eid_view["Equipment ID"].dropna().astype(str).unique().tolist())
-                    if all_eids:
-                        drill_col1, drill_col2 = st.columns([2,2])
-                        with drill_col1:
-                            sel_eid = st.selectbox("Select Equipment ID", all_eids, key="eid_drill_sel")
-                        eid_sub = fdf_eid_view[fdf_eid_view["Equipment ID"].astype(str) == sel_eid].copy()
-                        eid_dept_val = get_department(sel_eid)
-                        eid_dept_color = DEPT_COLORS.get(eid_dept_val, "#7986cb")
-
-                        with drill_col2:
-                            st.markdown(f"""
-                            <div style="background:{'rgba(30,34,53,0.8)' if DM else '#f8f9fa'};
-                                        border-left:5px solid {eid_dept_color};border-radius:10px;
-                                        padding:10px 16px;margin-top:8px;">
-                                <span style="font-size:1.1rem;font-weight:900;color:{eid_dept_color};">
-                                    Station {sel_eid}
-                                </span>
-                                <span style="font-size:0.8rem;color:{_sub};margin-left:10px;">{eid_dept_val}</span>
-                                <div style="font-size:0.82rem;color:{_text};margin-top:4px;">
-                                    <b style="color:{eid_dept_color};">{len(eid_sub):,}</b> andons &nbsp;·&nbsp;
-                                    <b style="color:{eid_dept_color};">{eid_sub["Resolve_Min"].mean():.2f} min</b> avg dwell
-                                </div>
-                            </div>""", unsafe_allow_html=True)
-
-                        dd1, dd2 = st.columns(2)
-                        with dd1:
-                            # Timeline
-                            eid_daily_sub = eid_sub.groupby("Date").agg(
-                                Count=("Resolve_Min","count"), Avg=("Resolve_Min","mean")
-                            ).reset_index()
-                            fig_eid_dd = go.Figure()
-                            fig_eid_dd.add_trace(go.Bar(
-                                x=eid_daily_sub["Date"].astype(str), y=eid_daily_sub["Count"],
-                                marker_color=eid_dept_color, opacity=0.75, name="Count"
-                            ))
-                            fig_eid_dd.add_trace(go.Scatter(
-                                x=eid_daily_sub["Date"].astype(str), y=eid_daily_sub["Avg"].round(2),
-                                yaxis="y2", name="Avg (min)",
-                                line=dict(color="#ffa726", width=2),
-                                marker=dict(size=6)
-                            ))
-                            fig_eid_dd.update_layout(
-                                title=f"Daily trend — Station {sel_eid}",
-                                height=280,
-                                yaxis=dict(title="Count"),
-                                yaxis2=dict(title="Avg (min)", overlaying="y", side="right", showgrid=False),
-                                margin=dict(t=40,b=20,l=0,r=50),
-                                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                                font=dict(color=_text),
-                                legend=dict(orientation="h", y=-0.25)
-                            )
-                            st.plotly_chart(fig_eid_dd, use_container_width=True)
-
-                        with dd2:
-                            # Andon type breakdown for this EID
-                            eid_type_sub = eid_sub["Andon Type"].value_counts().reset_index()
-                            eid_type_sub.columns = ["Andon Type","Count"]
-                            fig_eid_type_dd = px.pie(
-                                eid_type_sub, names="Andon Type", values="Count", hole=0.55,
-                                title=f"Andon Types — Station {sel_eid}",
-                                color_discrete_sequence=px.colors.qualitative.Set2
-                            )
-                            fig_eid_type_dd.update_traces(textinfo="percent+label", textfont_size=9)
-                            fig_eid_type_dd.update_layout(
-                                height=280, showlegend=True,
-                                legend=dict(orientation="h", y=-0.35, font_size=9),
-                                margin=dict(t=40,b=10,l=0,r=0),
-                                paper_bgcolor="rgba(0,0,0,0)", font=dict(color=_text)
-                            )
-                            st.plotly_chart(fig_eid_type_dd, use_container_width=True)
-
-                        # Full log for this EID
-                        with st.expander(f"📋 Full Andon Log — Station {sel_eid} ({len(eid_sub):,} records)", expanded=False):
-                            log_cols = ["Time Created","Andon Type","Resolve_Min","Resolver"]
-                            if "Creator"      in eid_sub.columns: log_cols.insert(3,"Creator")
-                            if "Blocking"     in eid_sub.columns: log_cols.append("Blocking")
-                            if "Zone"         in eid_sub.columns: log_cols.append("Zone")
-                            if "Time Resolved" in eid_sub.columns: log_cols.append("Time Resolved")
-                            avail_log = [c for c in log_cols if c in eid_sub.columns]
-                            st.dataframe(
-                                eid_sub[avail_log].sort_values("Time Created", ascending=False)
-                                .rename(columns={"Resolve_Min":"Dwell (min)"}),
-                                use_container_width=True, height=320, hide_index=True
-                            )
-
-                    # ── Download ──────────────────────────────────────────────
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    import io as _io_eid
-                    eid_csv = fdf_eid_view.to_csv(index=False).encode("utf-8")
-                    st.download_button(
-                        "⬇️ Download Equipment ID Data (CSV)",
-                        eid_csv, "Equipment_ID_Analysis.csv", "text/csv",
-                        use_container_width=True, key="eid_dl_csv"
-                    )
-
-    # ── Tab: Hourly Trend
     # ── Tab: Hourly Trend ─────────────────────────────────────────────────────
     with tab["Hourly Trend"]:
         tab_pdf_download("Hourly_Trend", fdf)
-        fdf_hr = col_filters(fdf, "hourly", cols_override=["Andon Type","Resolver","Zone","Shift","Date"])
         st.markdown('<div class="sec-title">Count of Andon Type and Avg Dwell Time by Hour of Day</div>', unsafe_allow_html=True)
-        hourly_count = (fdf_hr.groupby(["Hour", "Andon Type"])["Resolve_Min"]
+        hourly_count = (fdf.groupby(["Hour", "Andon Type"])["Resolve_Min"]
                         .count().reset_index().rename(columns={"Resolve_Min": "Count"}))
-        hourly_avg   = (fdf_hr.groupby("Hour")["Resolve_Min"]
+        hourly_avg   = (fdf.groupby("Hour")["Resolve_Min"]
                         .mean().reset_index().rename(columns={"Resolve_Min": "Avg Time"}))
         fig_h = go.Figure()
         colors = px.colors.qualitative.Pastel + px.colors.qualitative.Set2
-        for i, at in enumerate(sorted(fdf_hr["Andon Type"].dropna().unique())):
+        for i, at in enumerate(sorted(fdf["Andon Type"].dropna().unique())):
             sub = hourly_count[hourly_count["Andon Type"] == at]
             fig_h.add_trace(go.Bar(x=sub["Hour"], y=sub["Count"], name=at,
                                    marker_color=colors[i % len(colors)]))
@@ -3326,7 +2849,7 @@ if _all_parts or uploaded_files:
         st.plotly_chart(fig_h, use_container_width=True)
 
         st.markdown('<div class="sec-title">Resolve Time Trend by Day</div>', unsafe_allow_html=True)
-        daily = (fdf_hr.groupby("Date").agg(Count=("Resolve_Min", "count"), Avg=("Resolve_Min", "mean"))
+        daily = (fdf.groupby("Date").agg(Count=("Resolve_Min", "count"), Avg=("Resolve_Min", "mean"))
                  .reset_index().sort_values("Date"))
         fig_d = go.Figure()
         fig_d.add_trace(go.Bar(x=daily["Date"], y=daily["Count"], name="Andons",
@@ -3344,9 +2867,8 @@ if _all_parts or uploaded_files:
     # ── Tab: Heatmap ──────────────────────────────────────────────────────────
     with tab["Heatmap"]:
         tab_pdf_download("Heatmap", fdf)
-        fdf_hm = col_filters(fdf, "heatmap", cols_override=["Zone","Shift","Date"])
         st.markdown('<div class="sec-title">Avg Resolve Time Heatmap — Resolver × Andon Type</div>', unsafe_allow_html=True)
-        pivot_hm = fdf_hm.pivot_table(index="Resolver", columns="Andon Type",
+        pivot_hm = fdf.pivot_table(index="Resolver", columns="Andon Type",
                                    values="Resolve_Min", aggfunc="mean").round(2)
         fig_hm = px.imshow(pivot_hm, text_auto=True, aspect="auto",
                            color_continuous_scale="RdYlGn_r", labels=dict(color="Avg (min)"))
@@ -3355,7 +2877,7 @@ if _all_parts or uploaded_files:
 
         c1, c2 = st.columns(2)
         with c1:
-            res_perf = (fdf_hm.groupby("Resolver")
+            res_perf = (fdf.groupby("Resolver")
                         .agg(Count=("Resolve_Min", "count"), Avg=("Resolve_Min", "mean"))
                         .reset_index().sort_values("Avg", ascending=False))
             fig_r = px.bar(res_perf, x="Resolver", y="Avg", color="Avg",
@@ -3367,7 +2889,7 @@ if _all_parts or uploaded_files:
                                 margin=dict(t=20, b=40, l=0, r=0))
             st.plotly_chart(fig_r, use_container_width=True)
         with c2:
-            cat_perf = (fdf_hm.groupby("Andon Type")
+            cat_perf = (fdf.groupby("Andon Type")
                         .agg(Count=("Resolve_Min", "count"), Avg=("Resolve_Min", "mean"))
                         .reset_index().sort_values("Avg"))
             fig_c = px.bar(cat_perf, x="Avg", y="Andon Type", orientation="h",
@@ -3382,13 +2904,12 @@ if _all_parts or uploaded_files:
     # ── Tab: Raw Data ─────────────────────────────────────────────────────────
     with tab["Raw Data"]:
         tab_pdf_download("Raw_Data", fdf)
-        fdf_raw = col_filters(fdf, "rawdata")
         st.markdown('<div class="sec-title">Raw Resolved Andon Records</div>', unsafe_allow_html=True)
-        st.markdown(f"**{len(fdf_raw):,}** records matching current filters · from **{len(uploaded_files)}** file(s)")
-        st.dataframe(fdf_raw, use_container_width=True, height=500)
+        st.markdown(f"**{len(fdf):,}** records matching current filters · from **{len(uploaded_files)}** file(s)")
+        st.dataframe(fdf, use_container_width=True, height=500)
         dl1, dl2 = st.columns(2)
         with dl1:
-            csv = fdf_raw.to_csv(index=False).encode("utf-8")
+            csv = fdf.to_csv(index=False).encode("utf-8")
             st.download_button("⬇️ Download as CSV", csv, "andon_filtered.csv", "text/csv", use_container_width=True)
         with dl2:
             import io
