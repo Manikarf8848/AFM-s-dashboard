@@ -2807,12 +2807,11 @@ if _all_parts or uploaded_files:
 
                         # Per department detail
                         for dept in DEPT_COLORS.keys():
-                             sub = dept_bl_df[dept_bl_df["Department"] == dept]
-                             if sub.empty:
-                                 continue
-                            story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(DEPT_COLORS[dept].lstrip("#"))))                            # Pass the full '#RRGGBB' string to reportlab.HexColor (don't strip the leading '#')
-                           story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(DEPT_COLORS[dept])))
-                             story_p.append(Paragraph(f"{dept} — {len(sub):,} blocking andons · {sub['Resolve_Min'].sum()/60:.2f} hrs lost", h2_style))
+                            sub = dept_bl_df[dept_bl_df["Department"] == dept]
+                            if sub.empty:
+                                continue
+                            story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(DEPT_COLORS[dept].lstrip("#"))))
+                            story_p.append(Paragraph(f"{dept} — {len(sub):,} blocking andons · {sub['Resolve_Min'].sum()/60:.2f} hrs lost", h2_style))
                             # Andon type breakdown
                             type_data = [["Andon Type","Count","Hrs Lost","Avg (min)","% of Dept"]]
                             for _, row in (sub.groupby("Andon Type")
