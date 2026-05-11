@@ -2810,7 +2810,10 @@ if _all_parts or uploaded_files:
                             sub = dept_bl_df[dept_bl_df["Department"] == dept]
                             if sub.empty:
                                 continue
-                            story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(DEPT_COLORS[dept].lstrip("#"))))
+                            dept_color = DEPT_COLORS[dept]
+if dept_color and dept_color.startswith("#"):
+    dept_color = dept_color[1:]  # Remove leading #
+story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(dept_color)))
                             story_p.append(Paragraph(f"{dept} — {len(sub):,} blocking andons · {sub['Resolve_Min'].sum()/60:.2f} hrs lost", h2_style))
                             # Andon type breakdown
                             type_data = [["Andon Type","Count","Hrs Lost","Avg (min)","% of Dept"]]
