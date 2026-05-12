@@ -915,6 +915,8 @@ if _all_parts or uploaded_files:
                 unsafe_allow_html=True
             )
             result = df_in.copy()
+            
+            # Date range filter first
             if "Date" in df_in.columns:
                 d_min, d_max = df_in["Date"].min(), df_in["Date"].max()
                 dc1, dc2 = st.columns(2)
@@ -927,16 +929,20 @@ if _all_parts or uploaded_files:
                     )
                 if len(tab_date) == 2:
                     result = result[(result["Date"] >= tab_date[0]) & (result["Date"] <= tab_date[1])]
+            
+            # Build dropdowns - generate options from ORIGINAL data but filter progressively
             chunk_size = 4
             chunks = [filter_cols[i:i+chunk_size] for i in range(0, len(filter_cols), chunk_size)]
             for chunk in chunks:
                 fcols_ui = st.columns(len(chunk))
                 for fc_obj, col in zip(fcols_ui, chunk):
                     with fc_obj:
-                        opts = ["All"] + sorted(result[col].dropna().astype(str).unique().tolist())
+                        # IMPORTANT: Get options from ORIGINAL df_in, not from result
+                        opts = ["All"] + sorted(df_in[col].dropna().astype(str).unique().tolist())
                         chosen = st.selectbox(f"🔎 {col}", options=opts, key=f"cf_{tab_key}_{col}")
                         if chosen != "All":
                             result = result[result[col].astype(str) == chosen]
+            
             removed = len(df_in) - len(result)
             if removed > 0:
                 st.markdown(
