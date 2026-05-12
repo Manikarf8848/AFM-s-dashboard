@@ -145,36 +145,47 @@ st.markdown(f"""
 .badge-green  {{ background: rgba(76,175,80,0.15);  color: #4caf50; border: 1px solid rgba(76,175,80,0.4); }}
 .badge-blue   {{ background: rgba(121,134,203,0.15); color: {_accent}; border: 1px solid rgba(121,134,203,0.4); }}
 
-/* ── Scrollable tabs ── */
+/* ── Scrollable tabs with VISIBLE slider below ── */
+div[data-testid="stTabs"] {{
+    position: relative;
+    margin-bottom: 16px;
+}}
 div[data-testid="stTabs"] > div:first-child {{
     overflow-x: auto !important;
     overflow-y: visible !important;
     flex-wrap: nowrap !important;
     display: flex !important;
     scrollbar-width: auto !important;
-    scrollbar-color: {_accent} rgba(100,100,100,0.2) !important;
-    padding-bottom: 12px !important;
+    scrollbar-color: {_accent} rgba(100,100,100,0.15) !important;
+    padding-bottom: 16px !important;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    gap: 2px;
-    margin-bottom: 8px;
-    border-bottom: 2px solid rgba(100,100,100,0.1);
+    gap: 4px;
+    margin-bottom: 0;
 }}
+/* Firefox scrollbar */
+div[data-testid="stTabs"] > div:first-child {{
+    scrollbar-width: auto;
+    scrollbar-color: {_accent} transparent;
+}}
+/* WebKit scrollbar */
 div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar {{
-    height: 12px !important;
+    height: 16px !important;
+    width: 100%;
 }}
 div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-track {{
-    background: rgba(100,100,100,0.1);
+    background: rgba(100,100,100,0.08) !important;
     border-radius: 10px;
+    margin: 0 20px;
 }}
 div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-thumb {{
-    background: {_accent};
+    background: {_accent} !important;
     border-radius: 10px;
-    border: 2px solid rgba(100,100,100,0.1);
+    border: 3px solid rgba(100,100,100,0.08) !important;
+    min-width: 50px;
 }}
 div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-thumb:hover {{
-    background: {_accent};
-    opacity: 0.9;
+    background: #5c6bc0 !important;
 }}
 div[data-testid="stTabs"] button {{
     font-weight: 600; font-size: 0.83rem;
@@ -965,6 +976,37 @@ if _all_parts or uploaded_files:
                     unsafe_allow_html=True
                 )
         return result
+
+    # ── Filterable DataFrame Helper ────────────────────────────────────────
+    def show_filterable_df(df_display, height=400):
+        """Display DataFrame with visual column filter indicators."""
+        if df_display.empty:
+            st.warning("No data to display.")
+            return
+        
+        # Create HTML table with filter icons on headers
+        cols_html = "".join([f'<th><span style="display:flex;justify-content:space-between;align-items:center;">{col}<span style="color:#ffd700;margin-left:8px;font-size:1.2rem;">⬇️</span></span></th>' for col in df_display.columns])
+        
+        rows_html = ""
+        for _, row in df_display.iterrows():
+            row_html = "<tr>" + "".join([f"<td>{val}</td>" for val in row]) + "</tr>"
+            rows_html += row_html
+        
+        table_html = f"""
+        <div style="overflow-x:auto;border-radius:8px;box-shadow:{'0 2px 16px rgba(0,0,0,0.35)' if DM else '0 2px 10px rgba(0,0,0,0.07)'};">
+        <table style="width:100%;border-collapse:collapse;background:{_card};">
+            <thead>
+                <tr style="background:{_border};color:white;">
+                    {cols_html}
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+        </div>
+        """
+        st.markdown(table_html, unsafe_allow_html=True)
 
     # ── Tab: Overview ─────────────────────────────────────────────────────────
     with tab["📊 Overview"]:
