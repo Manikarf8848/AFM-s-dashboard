@@ -27,10 +27,10 @@ _sub     = "#8892b0" if DM else "#666666"
 _border  = "#3949ab"
 _accent  = "#7986cb" if DM else "#3949ab"
 
-# Pre-compute all conditional CSS values so no ternary expressions sit inside the f-string
 _css_sidebar_border   = "#2a2d3e" if DM else "#e0e0e0"
+# FIXED: Much higher contrast for light mode header
 _css_header_bg        = "linear-gradient(135deg, #0d1333 0%, #1a237e 45%, #3949ab 100%)" if DM else "linear-gradient(135deg, #1a237e 0%, #283593 50%, #3949ab 100%)"
-_css_header_shadow    = "0 4px 32px rgba(57,73,171,0.6), 0 0 0 1px rgba(121,134,203,0.15)" if DM else "0 4px 24px rgba(57,73,171,0.35)"
+_css_header_shadow    = "0 4px 32px rgba(57,73,171,0.6), 0 0 0 1px rgba(121,134,203,0.15)" if DM else "0 4px 24px rgba(57,73,171,0.5), 0 0 0 1px rgba(57,73,171,0.3)"
 _css_kpi_shadow       = "0 2px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(57,73,171,0.12)" if DM else "0 2px 16px rgba(0,0,0,0.08)"
 _css_kpi_hover_shadow = "0 12px 36px rgba(57,73,171,0.55), 0 0 0 1px rgba(121,134,203,0.25)" if DM else "0 10px 30px rgba(57,73,171,0.25)"
 _css_profile_shadow   = "0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(57,73,171,0.15)" if DM else "0 2px 16px rgba(0,0,0,0.08)"
@@ -75,7 +75,7 @@ st.markdown(f"""
 .dash-header {{
     background: {_css_header_bg};
     padding: 1.2rem 2rem; border-radius: 16px; margin-bottom: 1rem;
-    color: white; display: flex; align-items: center; gap: 1.5rem;
+    color: white !important; display: flex; align-items: center; gap: 1.5rem;
     box-shadow: {_css_header_shadow};
     animation: slideDown 0.5s cubic-bezier(0.22,1,0.36,1);
     position: relative; overflow: hidden;
@@ -90,8 +90,10 @@ st.markdown(f"""
     from {{ transform: translateY(-20px); opacity: 0; }}
     to   {{ transform: translateY(0);     opacity: 1; }}
 }}
-.dash-header h1 {{ margin: 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; }}
-.dash-header p  {{ margin: 0.2rem 0 0 0; opacity: 0.75; font-size: 0.82rem; }}
+/* FIXED: Force white text in header for both modes */
+.dash-header h1 {{ margin: 0; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.02em; color: #ffffff !important; text-shadow: 0 1px 4px rgba(0,0,0,0.4); }}
+.dash-header p  {{ margin: 0.2rem 0 0 0; opacity: 0.9; font-size: 0.82rem; color: #e8eaf6 !important; }}
+.dash-header strong {{ color: #ffffff !important; }}
 
 .kpi-box {{
     background: {_card}; border-radius: 14px; padding: 1.1rem 1.2rem;
@@ -143,27 +145,11 @@ st.markdown(f"""
 .badge-green  {{ background: rgba(76,175,80,0.15);  color: #4caf50; border: 1px solid rgba(76,175,80,0.4); }}
 .badge-blue   {{ background: rgba(121,134,203,0.15); color: {_accent}; border: 1px solid rgba(121,134,203,0.4); }}
 
-/* ── Scrollable tab bar ── */
-div[data-testid="stTabs"] > div:first-child {{
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    scrollbar-width: thin;
-    scrollbar-color: {_accent} transparent;
-    padding-bottom: 2px;
-}}
-div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar {{
-    height: 4px;
-}}
-div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-thumb {{
-    background: {_accent}; border-radius: 10px;
-}}
 div[data-testid="stTabs"] button {{
     font-weight: 600; font-size: 0.83rem;
     color: {_sub} !important;
     transition: color 0.2s ease, background 0.2s ease;
     border-radius: 6px 6px 0 0;
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
 }}
 div[data-testid="stTabs"] button:hover {{
     color: {_accent} !important;
@@ -265,10 +251,62 @@ p, .stMarkdown, [data-testid="stMarkdownContainer"] * {{ color: {_text}; }}
 [data-testid="stFileUploader"]:hover {{
     border-color: {_accent} !important;
 }}
+
+.dept-card {{
+    border-radius: 14px; padding: 1.1rem 1.3rem; margin-bottom: 0.5rem;
+    border-left: 5px solid; transition: transform 0.2s ease, box-shadow 0.2s ease;
+    animation: fadeUp 0.4s cubic-bezier(0.22,1,0.36,1) both;
+}}
+.dept-card:hover {{ transform: translateY(-3px); }}
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar ────────────────────────────────────────────────────────────────
+# ── Department Station Mappings ─────────────────────────────────────────────
+DEPT_STATIONS = {
+    "ARSAW": [
+        "2319","2320","2327","2328","2335","2336","2341","2342","2348","2349",
+        "2356","2357","2362","2363","2368","2369","2376","2377","2382","2383",
+        "3317","3318","3325","3326","3333","3334","3339","3340","3346","3347",
+        "3355","3356","3361","3362","3367","3368","3376","3377","3382","3383",
+        "4320","4321","4328","4329","4335","4336","4341","4342","4348","4349",
+        "4356","4357","4363","4364","4369","4370","4377","4378","4385","4386",
+    ],
+    "PTR": [
+        "2118","2119","2125","2126","2134","2135","2141","2142","2147","2148",
+        "2152","2153","2159","2160","2165","2166","3118","3119","3125","3126",
+        "3134","3135","3141","3142","3147","3148","3153","3154","3159","3160",
+        "3166","3167","4118","4119","4125","4126","4137","4138","4144","4145",
+        "4150","4151","4155","4156","4162","4163","4169","4170",
+    ],
+    "ARStow": [
+        "2223","2227","2229","2232","2235","2238","2241","2243","2247","2251",
+        "2254","2257","2259","2263","2265","2269","3232","3235","3236","3239",
+        "3241","3244","3246","3249","3253","3254","3256","3258","3260","3263",
+        "3265","3268","4229","4231","4233","4235","4238","4240","4242","4243",
+        "4247","4249","4251","4254","4256","4258","4260","4263",
+    ],
+}
+ALL_KNOWN_STATIONS = set()
+for _s in DEPT_STATIONS.values():
+    ALL_KNOWN_STATIONS.update(_s)
+
+DEPT_COLORS = {
+    "ARSAW":     "#7986cb",
+    "PTR":       "#66bb6a",
+    "ARStow":    "#ffa726",
+    "Universal": "#ef5350",
+}
+
+def get_department(equipment_id):
+    if pd.isna(equipment_id):
+        return "Universal"
+    eid = str(equipment_id).strip()
+    for dept, stations in DEPT_STATIONS.items():
+        if eid in stations:
+            return dept
+    return "Universal"
+
+# ── Sidebar ─────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"<div style='font-size:1.1rem;font-weight:800;color:{_text};'>⚙️ Settings</div>", unsafe_allow_html=True)
     dm_toggle = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode, key="dm_toggle_key")
@@ -304,9 +342,7 @@ with st.sidebar:
                 load_icon = "⏏" if is_active else "▶"
                 if st.button(f"{load_icon} {load_label}", key=f"load_{fhash}", use_container_width=True):
                     if is_active:
-                        st.session_state.saved_active_hashes = [
-                            h for h in st.session_state.saved_active_hashes if h != fhash
-                        ]
+                        st.session_state.saved_active_hashes = [h for h in st.session_state.saved_active_hashes if h != fhash]
                     else:
                         if fhash not in st.session_state.saved_active_hashes:
                             st.session_state.saved_active_hashes.append(fhash)
@@ -314,9 +350,7 @@ with st.sidebar:
             with btn_col2:
                 if st.button("Remove", key=f"rm_{fhash}", use_container_width=True):
                     history_db.remove_entry(fhash)
-                    st.session_state.saved_active_hashes = [
-                        h for h in st.session_state.saved_active_hashes if h != fhash
-                    ]
+                    st.session_state.saved_active_hashes = [h for h in st.session_state.saved_active_hashes if h != fhash]
                     st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
@@ -330,6 +364,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(f"<div style='font-size:0.7rem;color:{_sub};text-align:center;'>LCY3 AFM Dashboard<br>Made by <b>Manish Karki</b></div>", unsafe_allow_html=True)
 
+# FIXED: Header with forced white text always visible in both modes
 st.markdown(f"""
 <div class="dash-header">
     <div>
@@ -348,6 +383,7 @@ THRESHOLDS = {
 DEFAULT_THRESHOLD = 5
 NO_THRESHOLD = ["Unreachable Charger"]
 
+BLOCKING_EXCLUDE_TYPES = ["Product Problem", "Out of Work"]
 
 def get_threshold(andon_type):
     if andon_type in NO_THRESHOLD:
@@ -378,6 +414,10 @@ CANONICAL_COLS = {
     "blocking": "Blocking",
     "equipment id": "Equipment ID",
     "id": "Equipment ID",
+    "creator": "Creator",
+    "created by": "Creator",
+    "time resolved": "Time Resolved",
+    "resolved at": "Time Resolved",
 }
 
 
@@ -457,7 +497,8 @@ def build_group_pivot(df, group_col):
 
     grand_row = pd.DataFrame(grand, index=["Total"])
     grand_row.columns = pd.MultiIndex.from_tuples(grand_row.columns)
-    return pd.concat([grand_row, tbl])
+    # Grand Total at BOTTOM
+    return pd.concat([tbl, grand_row])
 
 
 def apply_pivot_style(tbl):
@@ -509,9 +550,7 @@ def hbar_chart(df, col, title):
     return fig
 
 
-# ── PDF helper (per-tab download) ────────────────────────────────────────────
 def make_tab_pdf(title, fdf, within_threshold):
-    """Build a quick single-tab PDF using reportlab if available, else fpdf2."""
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib import colors
@@ -523,8 +562,6 @@ def make_tab_pdf(title, fdf, within_threshold):
         story = []
         story.append(Paragraph(f"LCY3 AFM Dashboard — {title}", styles["Title"]))
         story.append(Spacer(1, 12))
-
-        # KPI summary
         total = len(fdf)
         avg_t = fdf["Resolve_Min"].mean()
         med_t = fdf["Resolve_Min"].median()
@@ -548,8 +585,6 @@ def make_tab_pdf(title, fdf, within_threshold):
         ]))
         story.append(t)
         story.append(Spacer(1, 16))
-
-        # Leaderboard table
         lb = (fdf.groupby("Resolver")
               .agg(Total=("Resolve_Min","count"), Avg=("Resolve_Min","mean"))
               .reset_index().sort_values("Avg").head(20))
@@ -651,7 +686,6 @@ if uploaded_files:
         raw_for_preprocess["Resolve_Min"] = pd.to_timedelta(
             raw_for_preprocess["Dwell Time (hh:mm:ss)"], errors="coerce"
         ).dt.total_seconds() / 60
-        # ── FIX: coerce Time Created, drop NaT before isocalendar ──
         raw_for_preprocess["Time Created"] = pd.to_datetime(
             raw_for_preprocess["Time Created"], errors="coerce"
         )
@@ -702,6 +736,8 @@ if _all_parts or uploaded_files:
         "Shift":          "Shift"          in df.columns,
         "Blocking":       "Blocking"       in df.columns,
         "Equipment ID":   "Equipment ID"   in df.columns,
+        "Creator":        "Creator"        in df.columns,
+        "Time Resolved":  "Time Resolved"  in df.columns,
     }
 
     active_source_names = df["_source_file"].unique().tolist() if "_source_file" in df.columns else []
@@ -812,15 +848,15 @@ if _all_parts or uploaded_files:
     if optional_cols["Zone"]:           tab_names.append("By Zone")
     if optional_cols["Shift"]:          tab_names.append("By Shift")
     if optional_cols["Blocking"]:       tab_names.append("Blocking Analysis")
+    if optional_cols["Blocking"] and optional_cols["Equipment ID"]:
+        tab_names.append("🏭 Dept Blocking Analysis")
     if optional_cols["Equipment ID"]:   tab_names.append("Equipment ID Analysis")
     tab_names += ["Hourly Trend", "Heatmap", "Raw Data", "📤 Export", "📂 History"]
 
     tabs = st.tabs(tab_names)
     tab = {n: t for n, t in zip(tab_names, tabs)}
 
-    # ── Reusable PDF download button for any tab ───────────────────────────
     def tab_pdf_download(tab_label, df_for_pdf):
-        """Render a PDF download button at the top of a tab."""
         pdf_bytes = make_tab_pdf(tab_label, df_for_pdf, within_threshold)
         if pdf_bytes:
             st.download_button(
@@ -1195,9 +1231,8 @@ if _all_parts or uploaded_files:
         show_cols = ["Time Created", "Andon Type", "Resolve_Min", "Status"]
         if optional_cols["Zone"]:          show_cols.append("Zone")
         if optional_cols["Equipment ID"]:  show_cols.append("Equipment ID")
-        pdf_display = pdf[show_cols].sort_values("Time Created", ascending=False).rename(columns={"Resolve_Min": "Time (min)"})
-        pdf_display["Time (min)"] = pdf_display["Time (min)"].round(2)
-        st.dataframe(pdf_display.style.format({"Time (min)": "{:.2f}"}), use_container_width=True, height=340)
+        st.dataframe(pdf[show_cols].sort_values("Time Created", ascending=False).rename(
+            columns={"Resolve_Min": "Time (min)"}), use_container_width=True, height=340)
 
     # ── Tab: Root Cause Analysis ───────────────────────────────────────────────
     with tab["🔍 Root Cause"]:
@@ -1317,7 +1352,6 @@ if _all_parts or uploaded_files:
         tab_pdf_download("AFM_Performance", fdf)
         st.markdown('<div class="sec-title">Count and Average Dwell Time by Resolver × Andon Type</div>', unsafe_allow_html=True)
 
-        # ── NEW: Andon Type filter for this tab ──────────────────────────────
         all_andon_types_afm = sorted(fdf["Andon Type"].dropna().unique().tolist())
         sel_andon_types_afm = st.multiselect(
             "🔽 Filter by Andon Type (leave empty = show all)",
@@ -1360,6 +1394,7 @@ if _all_parts or uploaded_files:
 
             grand_row = pd.DataFrame(grand, index=["Grand Total"])
             grand_row.columns = pd.MultiIndex.from_tuples(grand_row.columns)
+            # Grand Total at BOTTOM
             afm_tbl = pd.concat([afm_tbl, grand_row])
 
             dwell_cs = [(c, "Dwell Time Avg") for c in andon_types] + [("Total Andons", "Avg Time")]
@@ -1488,10 +1523,6 @@ if _all_parts or uploaded_files:
 
     # ── Tab: AFM General ──────────────────────────────────────────────────────
     with tab["📋 AFM General"]:
-
-        # ── Config ─────────────────────────────────────────────────────────────
-        # Andon types excluded from Non-Blocking column (they're either in their
-        # own column or irrelevant to the AFM performance view)
         NON_BLOCKING_EXCLUDE = [
             "Replace Fiducial",
             "Untrusted Fiducial Barcode",
@@ -1501,11 +1532,10 @@ if _all_parts or uploaded_files:
             "Drive unit:Repeat offender:Pod barcode failed",
             "Drive Unit:Repeated Offenders: Pod Barcode Failed",
             "Pod Repeated Offender Replace Pod Fiducial",
-            "Amnesty",                   # has its own column
-            "Drive Lacking Capability",  # has its own column
+            "Amnesty",
+            "Drive Lacking Capability",
         ]
 
-        # Per-column red thresholds (avg >= threshold → red, else green)
         THRESH_BLOCKING     = 5
         THRESH_AMNESTY      = 10
         THRESH_DLC          = 10
@@ -1514,35 +1544,29 @@ if _all_parts or uploaded_files:
         if not optional_cols["Blocking"]:
             st.warning("⚠️ Your data does not have a 'Blocking' column. Please upload a file that includes the Blocking column.")
         else:
-            # ── Normalise Blocking values ──────────────────────────────────────
-            # Handles: yes/no, Yes/No, YES/NO, True/False, 1/0, y/n
             def _norm_bl(v):
                 if pd.isna(v):
                     return "no"
                 return "yes" if str(v).strip().lower() in ("yes", "true", "1", "y") else "no"
 
-            # Fresh copy — never mutate fdf used by other tabs
             _base = fdf.copy()
             _base["_BL"] = _base["Blocking"].apply(_norm_bl)
             _base["Resolver"] = _base["Resolver"].fillna("System").replace("", "System")
 
             st.markdown('<div class="sec-title">📋 AFM General — Performance by Category</div>', unsafe_allow_html=True)
 
-            # ── Filters ────────────────────────────────────────────────────────
             gf1, gf2, gf3 = st.columns([2, 2, 2])
             with gf1:
                 gen_hidden = st.multiselect(
                     "🙈 Hide Resolvers",
                     options=sorted(_base["Resolver"].unique().tolist()),
                     default=[], key="gen_hide_res",
-                    help="These resolvers will be hidden from the table."
                 )
             with gf2:
                 gen_show = st.multiselect(
                     "👁️ Show Only These Resolvers",
                     options=sorted(_base["Resolver"].unique().tolist()),
                     default=[], key="gen_show_res",
-                    help="If anything selected, ONLY these resolvers are shown."
                 )
             with gf3:
                 gen_andon_filter = st.multiselect(
@@ -1551,7 +1575,6 @@ if _all_parts or uploaded_files:
                     default=[], key="gen_andon_filter",
                 )
 
-            # Apply resolver filter
             if gen_show:
                 _gdf = _base[_base["Resolver"].isin(gen_show)].copy()
             elif gen_hidden:
@@ -1559,7 +1582,6 @@ if _all_parts or uploaded_files:
             else:
                 _gdf = _base.copy()
 
-            # Apply andon type filter
             if gen_andon_filter:
                 _gdf = _gdf[_gdf["Andon Type"].isin(gen_andon_filter)].copy()
 
@@ -1568,28 +1590,17 @@ if _all_parts or uploaded_files:
             else:
                 all_res = sorted(_gdf["Resolver"].unique())
 
-                # ── Segment data ───────────────────────────────────────────────
-                # Column order: Login | Amnesty | Drive Lacking Cap. | Blocking Andons | Non-Blocking | Total
-
-                # Amnesty — all rows with Andon Type = Amnesty
                 am_df  = _gdf[_gdf["Andon Type"] == "Amnesty"].copy()
-
-                # Drive Lacking Capability — all rows with Andon Type = DLC
                 dlc_df = _gdf[_gdf["Andon Type"] == "Drive Lacking Capability"].copy()
-
-                # Blocking Andons — Blocking=yes, excluding Amnesty & DLC (they have own cols)
                 bl_df  = _gdf[
                     (_gdf["_BL"] == "yes") &
                     (~_gdf["Andon Type"].isin(["Amnesty", "Drive Lacking Capability"]))
                 ].copy()
-
-                # Non-Blocking — Blocking=no, excluding all NON_BLOCKING_EXCLUDE types
                 nb_df  = _gdf[
                     (_gdf["_BL"] == "no") &
                     (~_gdf["Andon Type"].isin(NON_BLOCKING_EXCLUDE))
                 ].copy()
 
-                # ── Build per-resolver rows ────────────────────────────────────
                 def _rs(df_s, resolver):
                     r = df_s[df_s["Resolver"] == resolver]
                     c = len(r)
@@ -1622,7 +1633,6 @@ if _all_parts or uploaded_files:
                 gen_tbl.index.name = "Login"
                 gen_tbl.columns = pd.MultiIndex.from_tuples(gen_tbl.columns)
 
-                # ── Grand Total row ────────────────────────────────────────────
                 def _gr(df_s):
                     c = len(df_s)
                     return c, round(df_s["Resolve_Min"].mean(), 2) if c > 0 else None
@@ -1647,9 +1657,9 @@ if _all_parts or uploaded_files:
                     ("Total Andons",       "Avg (min)"): [a_tt_g],
                 }, index=["Grand Total"])
                 grd.columns = pd.MultiIndex.from_tuples(grd.columns)
-                gen_tbl = pd.concat([grd, gen_tbl])
+                # FIXED: Grand Total at BOTTOM
+                gen_tbl = pd.concat([gen_tbl, grd])
 
-                # ── Colour thresholds ──────────────────────────────────────────
                 _cat_thresh = {
                     "Amnesty":            THRESH_AMNESTY,
                     "Drive Lacking Cap.": THRESH_DLC,
@@ -1693,7 +1703,6 @@ if _all_parts or uploaded_files:
 
                 st.dataframe(gen_styler, use_container_width=True, height=460)
 
-                # ── Colour legend ──────────────────────────────────────────────
                 st.markdown(f"""
                 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 12px 0;font-size:0.78rem;">
                     <span style="background:rgb(210,40,40);color:white;padding:2px 10px;border-radius:10px;font-weight:700;">🔴 Blocking avg ≥ {THRESH_BLOCKING} min</span>
@@ -1704,7 +1713,6 @@ if _all_parts or uploaded_files:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # ── Hours Lost KPIs ────────────────────────────────────────────
                 st.markdown('<div class="sec-title">⏱️ Hours Lost to Blocking Andons</div>', unsafe_allow_html=True)
                 st.caption("Hours lost = total dwell time of Blocking andons — time the station was stopped waiting for resolution.")
 
@@ -1735,17 +1743,16 @@ if _all_parts or uploaded_files:
 
                 st.markdown("<br>", unsafe_allow_html=True)
 
-                # Daily hours lost chart + summary table
                 daily_bl_trend = (
                     bl_df.groupby(["Date", "Andon Type"])
                     .agg(Minutes_Lost=("Resolve_Min","sum"), Count=("Resolve_Min","count"))
                     .reset_index()
                 )
-                daily_bl_trend["Hours_Lost"] = (daily_bl_trend["Minutes_Lost"] / 60).round(2)
+                daily_bl_trend["Hours_Lost"] = (daily_bl_trend["Minutes_Lost"] / 60).round(3)
                 daily_bl_total = (
                     bl_df.groupby("Date")
                     .agg(
-                        Hours_Total=("Resolve_Min", lambda x: round(x.sum()/60, 2)),
+                        Hours_Total=("Resolve_Min", lambda x: round(x.sum()/60, 3)),
                         Count_Total=("Resolve_Min", "count")
                     ).reset_index()
                 )
@@ -1787,20 +1794,19 @@ if _all_parts or uploaded_files:
                             .reset_index()
                             .assign(
                                 Hours_Lost=lambda d: (d["Total_Min"]/60).round(2),
-                                Total_Min=lambda d: d["Total_Min"].round(2),
+                                Total_Min=lambda d: d["Total_Min"].round(1),
                                 Avg_Min=lambda d: d["Avg_Min"].round(2)
                             )
                             .sort_values("Hours_Lost", ascending=False)
                             .rename(columns={"Total_Min":"Total Min","Avg_Min":"Avg Min","Hours_Lost":"Hrs Lost"})
                         )
                         st.dataframe(
-                            hl_summary[["Andon Type","Count","Hrs Lost","Avg Min"]].style.format({"Hrs Lost": "{:.2f}", "Avg Min": "{:.2f}"}),
+                            hl_summary[["Andon Type","Count","Hrs Lost","Avg Min"]],
                             use_container_width=True, hide_index=True, height=340
                         )
                 else:
                     st.info("No blocking andons found in the current filter range.")
 
-                # ── Downloads ──────────────────────────────────────────────────
                 st.markdown("<br>", unsafe_allow_html=True)
                 st.markdown('<div class="sec-title">⬇️ Download AFM General Report</div>', unsafe_allow_html=True)
                 dl_g1, dl_g2 = st.columns(2)
@@ -1815,7 +1821,6 @@ if _all_parts or uploaded_files:
                     wb = _WB2()
                     ws = wb.active
                     ws.title = "AFM General"
-
                     HDR  = _PF2("solid", fgColor="1A237E")
                     HFNT = _FN2(color="FFFFFF", bold=True, size=9)
                     GRFL = _PF2("solid", fgColor="E8EAF6")
@@ -1828,18 +1833,14 @@ if _all_parts or uploaded_files:
                     THIN = _SD2(style="thin", color="C5CAE9")
                     BDR  = _BD2(left=THIN, right=THIN, top=THIN, bottom=THIN)
                     CTR  = _AL2(horizontal="center", vertical="center")
-
                     _exc_thresh = {
                         "Amnesty":            THRESH_AMNESTY,
                         "Drive Lacking Cap.": THRESH_DLC,
                         "Blocking Andons":    THRESH_BLOCKING,
                         "Non-Blocking":       THRESH_NON_BLOCKING,
                     }
-
-                    # Row 1: "Login" header + merged category headers
                     c0 = ws.cell(row=1, column=1, value="Login")
                     c0.fill = HDR; c0.font = HFNT; c0.alignment = CTR; c0.border = BDR
-
                     col_map = {}
                     cats_seen = {}
                     cn = 2
@@ -1848,29 +1849,21 @@ if _all_parts or uploaded_files:
                         if cat not in cats_seen:
                             cats_seen[cat] = cn
                         cn += 1
-
                     for cat, start_c in cats_seen.items():
                         sub_count = sum(1 for (c2, _) in tbl.columns if c2 == cat)
                         end_c = start_c + sub_count - 1
                         if start_c != end_c:
-                            ws.merge_cells(start_row=1, start_column=start_c,
-                                           end_row=1, end_column=end_c)
+                            ws.merge_cells(start_row=1, start_column=start_c, end_row=1, end_column=end_c)
                         cell = ws.cell(row=1, column=start_c, value=cat)
-                        cell.fill = HDR; cell.font = HFNT
-                        cell.alignment = CTR; cell.border = BDR
-
-                    # Row 2: sub-headers (Count / Avg (min))
+                        cell.fill = HDR; cell.font = HFNT; cell.alignment = CTR; cell.border = BDR
                     ws.cell(row=2, column=1, value="Login").fill = HDR
                     ws.cell(row=2, column=1).font = HFNT
                     ws.cell(row=2, column=1).alignment = CTR
                     ws.cell(row=2, column=1).border = BDR
                     for (cat, sub), c_n in col_map.items():
                         cell = ws.cell(row=2, column=c_n, value=sub)
-                        cell.fill = HDR; cell.font = HFNT
-                        cell.alignment = CTR; cell.border = BDR
-
+                        cell.fill = HDR; cell.font = HFNT; cell.alignment = CTR; cell.border = BDR
                     data_rows_idx = [i for i in tbl.index if i != "Grand Total"]
-
                     for r_idx, resolver in enumerate(tbl.index, 3):
                         is_grand = resolver == "Grand Total"
                         cell = ws.cell(row=r_idx, column=1, value=resolver)
@@ -1879,7 +1872,6 @@ if _all_parts or uploaded_files:
                             cell.fill = GRFL; cell.font = GRFN
                         else:
                             cell.fill = WHT; cell.font = NFT
-
                         for (cat, sub), c_n in col_map.items():
                             raw = tbl.loc[resolver, (cat, sub)]
                             try:
@@ -1898,8 +1890,6 @@ if _all_parts or uploaded_files:
                                     cell.fill = GRE; cell.font = WFT
                             else:
                                 cell.fill = WHT; cell.font = NFT
-
-                    # Auto column widths
                     for col_obj in ws.columns:
                         mx = 0
                         cl = _gcl2(col_obj[0].column)
@@ -1909,13 +1899,10 @@ if _all_parts or uploaded_files:
                             except Exception:
                                 pass
                         ws.column_dimensions[cl].width = min(mx + 3, 28)
-
-                    # Sheet 2: Hours Lost detail
                     ws2 = wb.create_sheet("Hours Lost")
                     for i, hdr in enumerate(["Date","Blocking Andon Type","Resolver","Count","Minutes Lost","Hours Lost"], 1):
                         c2 = ws2.cell(row=1, column=i, value=hdr)
                         c2.fill = HDR; c2.font = HFNT; c2.border = BDR; c2.alignment = CTR
-
                     detail_bl = (
                         gfdf[
                             (gfdf["_BL"] == "yes") &
@@ -1925,10 +1912,9 @@ if _all_parts or uploaded_files:
                         .agg(Count=("Resolve_Min","count"), Minutes=("Resolve_Min","sum"))
                         .reset_index()
                     )
-                    detail_bl["Hours"]   = (detail_bl["Minutes"]/60).round(2)
+                    detail_bl["Hours"]   = (detail_bl["Minutes"]/60).round(3)
                     detail_bl["Minutes"] = detail_bl["Minutes"].round(2)
                     detail_bl = detail_bl.sort_values(["Date","Andon Type","Resolver"])
-
                     for ri, row in detail_bl.iterrows():
                         ws2.cell(row=ri+2, column=1, value=str(row["Date"]))
                         ws2.cell(row=ri+2, column=2, value=row["Andon Type"])
@@ -1936,7 +1922,6 @@ if _all_parts or uploaded_files:
                         ws2.cell(row=ri+2, column=4, value=int(row["Count"]))
                         ws2.cell(row=ri+2, column=5, value=row["Minutes"])
                         ws2.cell(row=ri+2, column=6, value=row["Hours"])
-
                     for col_obj in ws2.columns:
                         mx = 0
                         cl = _gcl2(col_obj[0].column)
@@ -1946,7 +1931,6 @@ if _all_parts or uploaded_files:
                             except Exception:
                                 pass
                         ws2.column_dimensions[cl].width = min(mx + 4, 30)
-
                     buf2 = _io2.BytesIO()
                     wb.save(buf2)
                     buf2.seek(0)
@@ -2019,7 +2003,8 @@ if _all_parts or uploaded_files:
 
         wk_grand_row = pd.DataFrame(wk_grand, index=["Grand Total"])
         wk_grand_row.columns = pd.MultiIndex.from_tuples(wk_grand_row.columns)
-        weekly_tbl = pd.concat([wk_grand_row, weekly_tbl])
+        # Grand Total at BOTTOM
+        weekly_tbl = pd.concat([weekly_tbl, wk_grand_row])
 
         wk_avg_cols = [c for c in weekly_tbl.columns if c[1] == "Avg Time"]
 
@@ -2070,7 +2055,8 @@ if _all_parts or uploaded_files:
 
         afm_wk_grand_row = pd.DataFrame(afm_wk_grand, index=["Grand Total"])
         afm_wk_grand_row.columns = pd.MultiIndex.from_tuples(afm_wk_grand_row.columns)
-        afm_wk_tbl = pd.concat([afm_wk_grand_row, afm_wk_tbl])
+        # Grand Total at BOTTOM
+        afm_wk_tbl = pd.concat([afm_wk_tbl, afm_wk_grand_row])
 
         afm_wk_avg_cols = [c for c in afm_wk_tbl.columns if c[1] == "Avg Time"]
 
@@ -2227,6 +2213,7 @@ if _all_parts or uploaded_files:
             bl_grand[("Total", "Avg Time")] = round(fdf["Resolve_Min"].mean(), 2)
             bl_grand_row = pd.DataFrame(bl_grand, index=["Grand Total"])
             bl_grand_row.columns = pd.MultiIndex.from_tuples(bl_grand_row.columns)
+            # Grand Total at BOTTOM
             bl_tbl = pd.concat([bl_tbl, bl_grand_row])
             bl_avg_cols_list = [(str(bv), "Avg Time") for bv in bl_vals] + [("Total", "Avg Time")]
 
@@ -2251,220 +2238,588 @@ if _all_parts or uploaded_files:
             with c2:
                 st.plotly_chart(hbar_chart(fdf, "Blocking", "Avg Resolve Time: Blocking vs Non-Blocking"), use_container_width=True)
 
-    if optional_cols["Equipment ID"]:
-        with tab["Equipment ID Analysis"]:
-            tab_pdf_download("Equipment_ID_Analysis", fdf)
-            st.markdown('<div class="sec-title">Equipment ID — Detailed Analysis</div>', unsafe_allow_html=True)
+    # ── NEW Tab: Department Blocking Analysis ─────────────────────────────────
+    if optional_cols["Blocking"] and optional_cols["Equipment ID"]:
+        with tab["🏭 Dept Blocking Analysis"]:
 
-            # ── Filters ────────────────────────────────────────────────────────
-            ef1, ef2, ef3 = st.columns([2, 2, 2])
-            with ef1:
-                all_eids = sorted(fdf["Equipment ID"].dropna().astype(str).unique().tolist())
-                sel_eids = st.multiselect("Filter by Equipment ID", options=all_eids, default=[], key="eid_filter")
-            with ef2:
-                eid_andon_opts = sorted(fdf["Andon Type"].dropna().unique().tolist())
-                sel_eid_andon = st.multiselect("Filter by Andon Type", options=eid_andon_opts, default=[], key="eid_andon_filter")
-            with ef3:
-                eid_resolver_opts = sorted(fdf["Resolver"].dropna().unique().tolist())
-                sel_eid_resolver = st.multiselect("Filter by Resolver", options=eid_resolver_opts, default=[], key="eid_resolver_filter")
+            def _norm_bl2(v):
+                if pd.isna(v):
+                    return "no"
+                return "yes" if str(v).strip().lower() in ("yes", "true", "1", "y") else "no"
 
-            eid_fdf = fdf.copy()
-            if sel_eids:
-                eid_fdf = eid_fdf[eid_fdf["Equipment ID"].astype(str).isin(sel_eids)]
-            if sel_eid_andon:
-                eid_fdf = eid_fdf[eid_fdf["Andon Type"].isin(sel_eid_andon)]
-            if sel_eid_resolver:
-                eid_fdf = eid_fdf[eid_fdf["Resolver"].isin(sel_eid_resolver)]
+            dept_base = fdf.copy()
+            dept_base["_BL"] = dept_base["Blocking"].apply(_norm_bl2)
+            dept_base["Department"] = dept_base["Equipment ID"].apply(
+                lambda x: get_department(str(x).strip()) if not pd.isna(x) else "Universal"
+            )
 
-            if eid_fdf.empty:
-                st.warning("No data matches the current Equipment ID filters.")
+            # Only blocking andons, exclude Product Problem & Out of Work
+            dept_bl = dept_base[
+                (dept_base["_BL"] == "yes") &
+                (~dept_base["Andon Type"].isin(BLOCKING_EXCLUDE_TYPES))
+            ].copy()
+
+            st.markdown('<div class="sec-title">🏭 Department Blocking Analysis</div>', unsafe_allow_html=True)
+            st.caption(
+                "Blocking andons (Blocking = Yes) only · Excludes Product Problem & Out of Work · "
+                "Stations mapped to ARSAW, PTR, ARStow, or Universal (all others)"
+            )
+
+            # ── Department filter ──────────────────────────────────────────────
+            dept_opts = ["All"] + ["ARSAW", "PTR", "ARStow", "Universal"]
+            dept_sel = st.selectbox("🏢 Filter by Department", dept_opts, key="dept_bl_sel")
+            if dept_sel != "All":
+                dept_bl_view = dept_bl[dept_bl["Department"] == dept_sel].copy()
             else:
-                # ── KPI cards ──────────────────────────────────────────────────
-                ek1, ek2, ek3, ek4 = st.columns(4)
-                for box, lbl, val, sub in [
-                    (ek1, "Total Andons",      f"{len(eid_fdf):,}",                              "in filtered range"),
-                    (ek2, "Unique Equipment",   f"{eid_fdf['Equipment ID'].nunique():,}",          "distinct IDs"),
-                    (ek3, "Avg Dwell Time",     f"{eid_fdf['Resolve_Min'].mean():.2f} min",        "per andon"),
-                    (ek4, "Most Active ID",     str(eid_fdf['Equipment ID'].value_counts().index[0]), "highest andon count"),
-                ]:
-                    box.markdown(f"""
-                    <div class="kpi-box">
-                        <div class="kpi-label">{lbl}</div>
-                        <div class="kpi-value" style="font-size:1.4rem;">{val}</div>
-                        <div class="kpi-sub">{sub}</div>
+                dept_bl_view = dept_bl.copy()
+
+            if dept_bl_view.empty:
+                st.warning("No blocking andons found for the selected department / current filters.")
+            else:
+                # ── KPI row ────────────────────────────────────────────────────
+                st.markdown("<br>", unsafe_allow_html=True)
+                dept_kpi_cols = st.columns(len(DEPT_COLORS) + 1)
+
+                dept_summary = {}
+                for dept, color in DEPT_COLORS.items():
+                    sub = dept_bl[dept_bl["Department"] == dept]
+                    cnt = len(sub)
+                    hrs = sub["Resolve_Min"].sum() / 60
+                    dept_summary[dept] = {"count": cnt, "hours": hrs, "color": color}
+
+                total_hrs_all = dept_bl["Resolve_Min"].sum() / 60
+                total_cnt_all = len(dept_bl)
+
+                for i, (dept, info) in enumerate(dept_summary.items()):
+                    dept_kpi_cols[i].markdown(f"""
+                    <div class="kpi-box" style="border-top-color:{info['color']};">
+                        <div class="kpi-label" style="color:{info['color']};">{dept}</div>
+                        <div class="kpi-value" style="font-size:1.6rem;color:{info['color']};">{info['hours']:.2f} hrs</div>
+                        <div class="kpi-sub">{info['count']:,} blocking andons</div>
                     </div>""", unsafe_allow_html=True)
+
+                dept_kpi_cols[-1].markdown(f"""
+                <div class="kpi-box" style="border-top-color:#9c27b0;">
+                    <div class="kpi-label" style="color:#9c27b0;">TOTAL</div>
+                    <div class="kpi-value" style="font-size:1.6rem;color:#9c27b0;">{total_hrs_all:.2f} hrs</div>
+                    <div class="kpi-sub">{total_cnt_all:,} blocking andons combined</div>
+                </div>""", unsafe_allow_html=True)
+
                 st.markdown("<br>", unsafe_allow_html=True)
 
-                # ── Weekly count pivot ─────────────────────────────────────────
-                st.markdown('<div class="sec-title">Andon Count by Equipment ID × Week</div>', unsafe_allow_html=True)
-                eid_weeks = sorted(eid_fdf["Week"].dropna().unique(), reverse=True)
-                eid_count_p = eid_fdf.pivot_table(index="Equipment ID", columns="Week",
-                                                   values="Resolve_Min", aggfunc="count", fill_value=0)
-                eid_cols = {}
-                for w in eid_weeks:
-                    if w in eid_count_p.columns:
-                        eid_cols[f"Wk {w}"] = eid_count_p[w].astype(int)
-                eid_cols["Total"] = eid_count_p[eid_weeks].sum(axis=1).astype(int) if eid_weeks else 0
-                eid_tbl = pd.DataFrame(eid_cols).sort_values("Total", ascending=False)
-                eid_tbl.index.name = "Equipment ID"
-                eid_grand = {f"Wk {w}": int(eid_fdf[eid_fdf["Week"] == w]["Resolve_Min"].count()) for w in eid_weeks if w in eid_count_p.columns}
-                eid_grand["Total"] = int(eid_fdf["Resolve_Min"].count())
-                eid_grand_row = pd.DataFrame(eid_grand, index=["Grand Total"])
-                eid_tbl = pd.concat([eid_grand_row, eid_tbl])
+                # ── Visual 1: Hours Lost per Department (donut) ────────────────
+                vc1, vc2, vc3 = st.columns(3)
 
-                def _style_eid(data):
-                    s = pd.DataFrame("", index=data.index, columns=data.columns)
-                    if "Grand Total" in data.index:
-                        s.loc["Grand Total"] = "font-weight:700; background-color:#1a237e; color:white"
-                    # Colour Total column by volume
-                    if "Total" in data.columns:
-                        data_rows = [i for i in data.index if i != "Grand Total"]
-                        mx = data.loc[data_rows, "Total"].max() if data_rows else 1
-                        for idx in data_rows:
-                            v = data.loc[idx, "Total"]
-                            try:
-                                if pd.isna(v): continue
-                                ratio = v / mx if mx > 0 else 0
-                                if ratio >= 0.75: s.loc[idx, "Total"] = "background-color:rgb(210,40,40);color:white;font-weight:700"
-                                elif ratio >= 0.5: s.loc[idx, "Total"] = "background-color:rgb(255,140,0);color:black;font-weight:700"
-                                elif ratio >= 0.25: s.loc[idx, "Total"] = "background-color:rgb(255,210,0);color:black;font-weight:600"
-                                else: s.loc[idx, "Total"] = "background-color:rgb(60,180,60);color:white;font-weight:600"
-                            except: pass
-                    return s
+                with vc1:
+                    st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin-bottom:4px;'>🕐 Hours Lost by Department</div>", unsafe_allow_html=True)
+                    dept_hrs_df = pd.DataFrame([
+                        {"Department": d, "Hours Lost": info["hours"], "Count": info["count"]}
+                        for d, info in dept_summary.items() if info["count"] > 0
+                    ])
+                    fig_dept_donut = px.pie(
+                        dept_hrs_df, names="Department", values="Hours Lost", hole=0.55,
+                        color="Department",
+                        color_discrete_map=DEPT_COLORS,
+                    )
+                    fig_dept_donut.update_traces(
+                        textinfo="percent+label",
+                        hovertemplate="<b>%{label}</b><br>Hours Lost: %{value:.2f}<br>%{percent}<extra></extra>"
+                    )
+                    fig_dept_donut.add_annotation(
+                        text=f"<b>{total_hrs_all:.1f}h</b>", x=0.5, y=0.5,
+                        font_size=18, font_color=_text, showarrow=False
+                    )
+                    fig_dept_donut.update_layout(
+                        height=320, showlegend=True,
+                        legend=dict(orientation="h", y=-0.3, font=dict(size=9)),
+                        margin=dict(t=10, b=10, l=0, r=0),
+                        paper_bgcolor="rgba(0,0,0,0)", font=dict(color=_text)
+                    )
+                    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+                    st.plotly_chart(fig_dept_donut, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-                st.dataframe(eid_tbl.style.apply(_style_eid, axis=None).format("{:,.0f}", na_rep="—"),
-                             use_container_width=True, height=380)
+                with vc2:
+                    st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin-bottom:4px;'>📊 Blocking Count by Department</div>", unsafe_allow_html=True)
+                    fig_dept_bar = go.Figure()
+                    for dept, info in dept_summary.items():
+                        fig_dept_bar.add_trace(go.Bar(
+                            name=dept, x=[dept], y=[info["count"]],
+                            marker_color=info["color"],
+                            text=[info["count"]], textposition="outside",
+                            hovertemplate=f"<b>{dept}</b><br>Count: {info['count']:,}<extra></extra>"
+                        ))
+                    fig_dept_bar.update_layout(
+                        height=320, showlegend=False,
+                        xaxis_title="", yaxis_title="Blocking Andons",
+                        margin=dict(t=10, b=20, l=0, r=0),
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(color=_text),
+                        xaxis=dict(color=_text), yaxis=dict(gridcolor="#333" if DM else "#eee", color=_text)
+                    )
+                    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+                    st.plotly_chart(fig_dept_bar, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-                # ── Avg dwell time pivot ───────────────────────────────────────
-                st.markdown('<div class="sec-title">Avg Dwell Time (min) by Equipment ID × Andon Type</div>', unsafe_allow_html=True)
-                eid_heat = eid_fdf.pivot_table(index="Equipment ID", columns="Andon Type",
-                                               values="Resolve_Min", aggfunc="mean").round(2)
-                if not eid_heat.empty:
-                    fig_eid_hm = px.imshow(eid_heat, text_auto=".2f", aspect="auto",
-                                           color_continuous_scale="RdYlGn_r",
-                                           labels=dict(color="Avg (min)"),
-                                           title="Avg Dwell Time Heatmap — Equipment ID × Andon Type")
-                    fig_eid_hm.update_layout(height=max(300, len(eid_heat)*28+100),
-                                             margin=dict(t=60, b=10, l=0, r=0),
-                                             font=dict(size=9))
-                    st.plotly_chart(fig_eid_hm, use_container_width=True)
-
-                # ── Top offenders ──────────────────────────────────────────────
-                ec1, ec2 = st.columns(2)
-                with ec1:
-                    st.markdown('<div class="sec-title">🔴 Top Equipment IDs by Andon Count</div>', unsafe_allow_html=True)
-                    top_eid_cnt = (eid_fdf.groupby("Equipment ID")["Resolve_Min"]
-                                   .agg(Count="count", Avg="mean").reset_index()
-                                   .nlargest(20, "Count")
-                                   .sort_values("Count"))
-                    top_eid_cnt["Avg"] = top_eid_cnt["Avg"].round(2)
-                    fig_eid_cnt = go.Figure(go.Bar(
-                        y=top_eid_cnt["Equipment ID"].astype(str),
-                        x=top_eid_cnt["Count"],
+                with vc3:
+                    st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin-bottom:4px;'>⏱️ Avg Dwell Time by Department</div>", unsafe_allow_html=True)
+                    dept_avg_df = []
+                    for dept, info in dept_summary.items():
+                        sub = dept_bl[dept_bl["Department"] == dept]
+                        if len(sub) > 0:
+                            dept_avg_df.append({"Department": dept, "Avg Time (min)": sub["Resolve_Min"].mean(), "color": info["color"]})
+                    dept_avg_df = pd.DataFrame(dept_avg_df).sort_values("Avg Time (min)")
+                    fig_dept_avg = go.Figure(go.Bar(
+                        x=dept_avg_df["Avg Time (min)"].round(2),
+                        y=dept_avg_df["Department"],
                         orientation="h",
-                        marker_color=["#ef5350" if v >= top_eid_cnt["Count"].quantile(0.75)
-                                      else "#ffa726" if v >= top_eid_cnt["Count"].quantile(0.5)
-                                      else "#66bb6a" for v in top_eid_cnt["Count"]],
-                        text=top_eid_cnt["Count"], textposition="outside",
-                        hovertemplate="<b>%{y}</b><br>Andons: %{x}<extra></extra>"
+                        marker_color=dept_avg_df["color"].tolist(),
+                        text=dept_avg_df["Avg Time (min)"].round(2),
+                        textposition="outside",
                     ))
-                    fig_eid_cnt.update_layout(height=420, xaxis_title="Andon Count", yaxis_title="",
-                                              margin=dict(t=10,b=10,l=0,r=40),
-                                              paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                                              font=dict(color=_text, size=9),
-                                              xaxis=dict(gridcolor="#333" if DM else "#eee"),
-                                              yaxis=dict(gridcolor="rgba(0,0,0,0)"))
-                    st.plotly_chart(fig_eid_cnt, use_container_width=True)
+                    fig_dept_avg.add_vline(x=DEFAULT_THRESHOLD, line_dash="dash", line_color="gray",
+                                           annotation_text=f"Target ({DEFAULT_THRESHOLD}min)")
+                    fig_dept_avg.update_layout(
+                        height=320, xaxis_title="Avg Dwell Time (min)", yaxis_title="",
+                        margin=dict(t=10, b=20, l=0, r=40),
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(color=_text),
+                        xaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
+                        yaxis=dict(color=_text)
+                    )
+                    st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+                    st.plotly_chart(fig_dept_avg, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
 
-                with ec2:
-                    st.markdown('<div class="sec-title">⏱️ Top Equipment IDs by Avg Dwell Time</div>', unsafe_allow_html=True)
-                    top_eid_avg = (eid_fdf.groupby("Equipment ID")["Resolve_Min"]
-                                   .agg(Count="count", Avg="mean").reset_index()
-                                   .query("Count >= 2")
-                                   .nlargest(20, "Avg")
-                                   .sort_values("Avg"))
-                    top_eid_avg["Avg"] = top_eid_avg["Avg"].round(2)
-                    fig_eid_avg = go.Figure(go.Bar(
-                        y=top_eid_avg["Equipment ID"].astype(str),
-                        x=top_eid_avg["Avg"],
-                        orientation="h",
-                        marker_color=["#ef5350" if v > DEFAULT_THRESHOLD*1.5
-                                      else "#ffa726" if v > DEFAULT_THRESHOLD
-                                      else "#66bb6a" for v in top_eid_avg["Avg"]],
-                        text=top_eid_avg["Avg"].round(2), textposition="outside",
-                        hovertemplate="<b>%{y}</b><br>Avg: %{x:.2f} min<extra></extra>"
-                    ))
-                    fig_eid_avg.add_vline(x=DEFAULT_THRESHOLD, line_dash="dash", line_color="gray",
-                                          annotation_text=f"Target ({DEFAULT_THRESHOLD} min)")
-                    fig_eid_avg.update_layout(height=420, xaxis_title="Avg Dwell Time (min)", yaxis_title="",
-                                              margin=dict(t=10,b=10,l=0,r=40),
-                                              paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                                              font=dict(color=_text, size=9),
-                                              xaxis=dict(gridcolor="#333" if DM else "#eee"),
-                                              yaxis=dict(gridcolor="rgba(0,0,0,0)"))
-                    st.plotly_chart(fig_eid_avg, use_container_width=True)
+                st.markdown("<br>", unsafe_allow_html=True)
 
-                # ── Andon type breakdown per equipment ─────────────────────────
-                st.markdown('<div class="sec-title">Andon Type Breakdown by Equipment ID</div>', unsafe_allow_html=True)
-                eid_type_tbl = (eid_fdf.groupby(["Equipment ID", "Andon Type"])["Resolve_Min"]
-                                .agg(Count="count", Avg="mean").reset_index()
-                                .sort_values(["Count"], ascending=False))
-                eid_type_tbl["Avg"] = eid_type_tbl["Avg"].round(2)
-                eid_type_tbl.columns = ["Equipment ID", "Andon Type", "Count", "Avg Dwell (min)"]
-                st.dataframe(eid_type_tbl.style.format({"Count": "{:,}", "Avg Dwell (min)": "{:.2f}"}),
-                             use_container_width=True, height=360, hide_index=True)
+                # ── Visual 2: Daily trend per department ───────────────────────
+                st.markdown(f"<div style='font-size:0.85rem;font-weight:700;color:{_text};margin-bottom:4px;'>📈 Daily Hours Lost by Department</div>", unsafe_allow_html=True)
+                daily_dept = (
+                    dept_bl.groupby(["Date", "Department"])
+                    .agg(Hours=("Resolve_Min", lambda x: x.sum()/60), Count=("Resolve_Min","count"))
+                    .reset_index()
+                )
+                fig_daily_dept = px.bar(
+                    daily_dept, x="Date", y="Hours", color="Department",
+                    barmode="stack",
+                    color_discrete_map=DEPT_COLORS,
+                    labels={"Hours": "Hours Lost", "Date": ""},
+                    hover_data={"Count": True}
+                )
+                fig_daily_dept.update_layout(
+                    height=340, legend=dict(orientation="h", y=-0.25, font_size=10),
+                    margin=dict(t=10, b=10, l=0, r=0),
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    font=dict(color=_text),
+                    xaxis=dict(gridcolor="#333" if DM else "#eee", color=_text),
+                    yaxis=dict(gridcolor="#333" if DM else "#eee", color=_text, title="Hours Lost"),
+                )
+                st.markdown('<div class="chart-card">', unsafe_allow_html=True)
+                st.plotly_chart(fig_daily_dept, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
-                # ── Full record table ──────────────────────────────────────────
-                st.markdown('<div class="sec-title">Full Record Detail — Who, What, When</div>', unsafe_allow_html=True)
-                eid_detail_cols = ["Equipment ID", "Andon Type", "Time Created", "Dwell Time (hh:mm:ss)", "Resolve_Min", "Resolver"]
-                if "Created By" in eid_fdf.columns:
-                    eid_detail_cols.insert(2, "Created By")
-                if "Status" in eid_fdf.columns:
-                    eid_detail_cols.append("Status")
-                if "Blocking" in eid_fdf.columns:
-                    eid_detail_cols.append("Blocking")
+                st.markdown("<br>", unsafe_allow_html=True)
 
-                eid_detail = eid_fdf[[c for c in eid_detail_cols if c in eid_fdf.columns]].copy()
-                eid_detail = eid_detail.sort_values("Time Created", ascending=False)
-                eid_detail["Resolve_Min"] = eid_detail["Resolve_Min"].round(2)
-                eid_detail = eid_detail.rename(columns={"Resolve_Min": "Dwell (min)", "Dwell Time (hh:mm:ss)": "Dwell Time"})
+                # ── Department sub-sections ────────────────────────────────────
+                dept_list_show = [dept_sel] if dept_sel != "All" else list(DEPT_COLORS.keys())
+                for dept in dept_list_show:
+                    dept_color = DEPT_COLORS.get(dept, "#7986cb")
+                    dept_data = dept_bl[dept_bl["Department"] == dept].copy()
+                    if dept_data.empty:
+                        continue
 
-                def _style_eid_detail(data):
+                    dept_hrs  = dept_data["Resolve_Min"].sum() / 60
+                    dept_cnt  = len(dept_data)
+                    dept_avg  = dept_data["Resolve_Min"].mean()
+
+                    st.markdown(f"""
+                    <div style="background:{'rgba(30,34,53,0.7)' if DM else '#f8f9fa'};
+                                border-left:6px solid {dept_color}; border-radius:12px;
+                                padding:1rem 1.4rem; margin:0.8rem 0 0.5rem 0;
+                                box-shadow:{'0 2px 16px rgba(0,0,0,0.3)' if DM else '0 2px 10px rgba(0,0,0,0.08)'};">
+                        <div style="font-size:1.2rem;font-weight:900;color:{dept_color};">🏭 {dept}</div>
+                        <div style="display:flex;gap:2rem;margin-top:6px;flex-wrap:wrap;">
+                            <span style="font-size:0.85rem;color:{_text};"><b style="color:{dept_color};">{dept_hrs:.2f} hrs</b> lost</span>
+                            <span style="font-size:0.85rem;color:{_text};"><b style="color:{dept_color};">{dept_cnt:,}</b> blocking andons</span>
+                            <span style="font-size:0.85rem;color:{_text};">Avg dwell: <b style="color:{dept_color};">{dept_avg:.2f} min</b></span>
+                        </div>
+                    </div>""", unsafe_allow_html=True)
+
+                    da1, da2 = st.columns(2)
+
+                    with da1:
+                        # Andon type breakdown for this dept
+                        st.markdown(f"<div style='font-size:0.8rem;font-weight:700;color:{_text};margin:6px 0 3px;'>Blocking Andon Types — {dept}</div>", unsafe_allow_html=True)
+                        dept_type_summary = (
+                            dept_data.groupby("Andon Type")
+                            .agg(Count=("Resolve_Min","count"), Hrs_Lost=("Resolve_Min", lambda x: x.sum()/60), Avg_Min=("Resolve_Min","mean"))
+                            .reset_index()
+                            .sort_values("Hrs_Lost", ascending=False)
+                        )
+                        dept_type_summary["Hrs_Lost"] = dept_type_summary["Hrs_Lost"].round(2)
+                        dept_type_summary["Avg_Min"]  = dept_type_summary["Avg_Min"].round(2)
+                        dept_type_summary["% of Dept"] = (dept_type_summary["Count"] / dept_cnt * 100).round(1)
+                        dept_type_summary.columns = ["Andon Type","Count","Hrs Lost","Avg (min)","% of Dept"]
+
+                        def _style_dept_tbl(data):
+                            s = pd.DataFrame("", index=data.index, columns=data.columns)
+                            for idx in data.index:
+                                avg = data.loc[idx, "Avg (min)"]
+                                try:
+                                    if avg > DEFAULT_THRESHOLD * 1.5:
+                                        s.loc[idx, "Avg (min)"] = "background-color:rgb(210,40,40);color:white;font-weight:700"
+                                    elif avg > DEFAULT_THRESHOLD:
+                                        s.loc[idx, "Avg (min)"] = "background-color:rgb(255,140,0);color:black;font-weight:700"
+                                    else:
+                                        s.loc[idx, "Avg (min)"] = "background-color:rgb(60,180,60);color:white;font-weight:700"
+                                except:
+                                    pass
+                            return s
+
+                        st.dataframe(
+                            dept_type_summary.style.apply(_style_dept_tbl, axis=None)
+                            .format({"Count": "{:,}", "Hrs Lost": "{:.2f}", "Avg (min)": "{:.2f}", "% of Dept": "{:.1f}%"}),
+                            use_container_width=True, hide_index=True, height=250
+                        )
+
+                    with da2:
+                        # Top resolvers for this dept
+                        st.markdown(f"<div style='font-size:0.8rem;font-weight:700;color:{_text};margin:6px 0 3px;'>Top Resolvers — {dept}</div>", unsafe_allow_html=True)
+                        dept_res_summary = (
+                            dept_data.groupby("Resolver")
+                            .agg(Count=("Resolve_Min","count"), Hrs=("Resolve_Min", lambda x: x.sum()/60), Avg=("Resolve_Min","mean"))
+                            .reset_index()
+                            .sort_values("Count", ascending=False)
+                            .head(10)
+                        )
+                        dept_res_summary["Hrs"] = dept_res_summary["Hrs"].round(2)
+                        dept_res_summary["Avg"] = dept_res_summary["Avg"].round(2)
+                        dept_res_summary.columns = ["Resolver","Count","Hrs Lost","Avg (min)"]
+                        st.dataframe(
+                            dept_res_summary.style.format({"Count": "{:,}", "Hrs Lost": "{:.2f}", "Avg (min)": "{:.2f}"}),
+                            use_container_width=True, hide_index=True, height=250
+                        )
+
+                    # Detailed log: who created, when, who resolved
+                    with st.expander(f"📋 Detailed Blocking Log — {dept}", expanded=False):
+                        detail_cols = ["Time Created", "Andon Type", "Equipment ID", "Resolver", "Resolve_Min"]
+                        if optional_cols["Creator"]:    detail_cols.insert(3, "Creator")
+                        if optional_cols["Time Resolved"]: detail_cols.append("Time Resolved")
+                        if "Zone" in dept_data.columns: detail_cols.append("Zone")
+
+                        avail_detail = [c for c in detail_cols if c in dept_data.columns]
+                        detail_display = dept_data[avail_detail].sort_values("Time Created", ascending=False).rename(
+                            columns={"Resolve_Min": "Dwell (min)"}
+                        )
+                        st.dataframe(detail_display, use_container_width=True, height=350, hide_index=True)
+
+                    st.markdown("<br>", unsafe_allow_html=True)
+
+                # ── Combined summary table ─────────────────────────────────────
+                st.markdown('<div class="sec-title">📊 Department Summary Table</div>', unsafe_allow_html=True)
+
+                dept_summary_rows = []
+                for dept in DEPT_COLORS.keys():
+                    sub = dept_bl[dept_bl["Department"] == dept]
+                    if sub.empty:
+                        continue
+                    # Top andon type
+                    top_type = sub["Andon Type"].value_counts().index[0] if len(sub) > 0 else "—"
+                    top_type_cnt = sub["Andon Type"].value_counts().iloc[0] if len(sub) > 0 else 0
+                    dept_summary_rows.append({
+                        "Department":       dept,
+                        "Blocking Andons":  len(sub),
+                        "Hours Lost":       round(sub["Resolve_Min"].sum()/60, 2),
+                        "Avg Dwell (min)":  round(sub["Resolve_Min"].mean(), 2),
+                        "Top Andon Type":   f"{top_type} ({top_type_cnt})",
+                        "Unique Stations":  sub["Equipment ID"].nunique(),
+                        "Unique Resolvers": sub["Resolver"].nunique(),
+                    })
+
+                # Grand total row
+                dept_summary_rows.append({
+                    "Department":       "GRAND TOTAL",
+                    "Blocking Andons":  len(dept_bl),
+                    "Hours Lost":       round(dept_bl["Resolve_Min"].sum()/60, 2),
+                    "Avg Dwell (min)":  round(dept_bl["Resolve_Min"].mean(), 2),
+                    "Top Andon Type":   f"{dept_bl['Andon Type'].value_counts().index[0]} ({dept_bl['Andon Type'].value_counts().iloc[0]})" if len(dept_bl) > 0 else "—",
+                    "Unique Stations":  dept_bl["Equipment ID"].nunique(),
+                    "Unique Resolvers": dept_bl["Resolver"].nunique(),
+                })
+
+                summary_df = pd.DataFrame(dept_summary_rows)
+
+                def _style_summary(data):
                     s = pd.DataFrame("", index=data.index, columns=data.columns)
-                    if "Dwell (min)" in data.columns:
-                        for idx in data.index:
-                            v = data.loc[idx, "Dwell (min)"]
-                            try:
-                                if pd.isna(v): continue
-                                if v > DEFAULT_THRESHOLD * 1.5:
-                                    s.loc[idx, "Dwell (min)"] = "background-color:rgb(210,40,40);color:white;font-weight:700"
-                                elif v > DEFAULT_THRESHOLD:
-                                    s.loc[idx, "Dwell (min)"] = "background-color:rgb(255,140,0);color:black;font-weight:700"
-                                else:
-                                    s.loc[idx, "Dwell (min)"] = "background-color:rgb(60,180,60);color:white;font-weight:700"
-                            except: pass
+                    for idx in data.index:
+                        dept = data.loc[idx, "Department"]
+                        color = DEPT_COLORS.get(dept)
+                        if dept == "GRAND TOTAL":
+                            s.loc[idx] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
+                        elif color:
+                            avg = data.loc[idx, "Avg Dwell (min)"]
+                            if avg >= DEFAULT_THRESHOLD * 1.5:
+                                s.loc[idx, "Avg Dwell (min)"] = "background-color:rgb(210,40,40);color:white;font-weight:700"
+                            elif avg >= DEFAULT_THRESHOLD:
+                                s.loc[idx, "Avg Dwell (min)"] = "background-color:rgb(255,140,0);color:black;font-weight:700"
+                            else:
+                                s.loc[idx, "Avg Dwell (min)"] = "background-color:rgb(60,180,60);color:white;font-weight:700"
                     return s
 
                 st.dataframe(
-                    eid_detail.style.apply(_style_eid_detail, axis=None)
-                              .format({"Dwell (min)": "{:.2f}"}),
-                    use_container_width=True, height=400, hide_index=True
+                    summary_df.style.apply(_style_summary, axis=None)
+                    .format({"Blocking Andons": "{:,}", "Hours Lost": "{:.2f}", "Avg Dwell (min)": "{:.2f}"}),
+                    use_container_width=True, hide_index=True
                 )
 
-                # ── Excel download ─────────────────────────────────────────────
-                import io as _eid_io
-                buf_eid = _eid_io.BytesIO()
-                with pd.ExcelWriter(buf_eid, engine="openpyxl") as eid_writer:
-                    eid_tbl.to_excel(eid_writer, sheet_name="Count by Week")
-                    eid_detail.to_excel(eid_writer, index=False, sheet_name="Full Detail")
-                    eid_type_tbl.to_excel(eid_writer, index=False, sheet_name="By Andon Type")
-                buf_eid.seek(0)
-                st.download_button(
-                    "⬇️ Download Equipment ID Analysis (.xlsx)",
-                    buf_eid.getvalue(), "Equipment_ID_Analysis.xlsx",
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True, key="eid_dl"
-                )
+                # ── Download buttons ───────────────────────────────────────────
+                st.markdown("<br>", unsafe_allow_html=True)
+                dl1, dl2 = st.columns(2)
+
+                import io as _io_dept
+                from openpyxl import Workbook as _WBd
+                from openpyxl.styles import (PatternFill as _PFd, Font as _FNd,
+                                              Alignment as _ALd, Border as _BDd, Side as _SDd)
+                from openpyxl.utils import get_column_letter as _gcld
+
+                def _build_dept_excel(dept_bl_df):
+                    wb = _WBd()
+                    THIN_d = _SDd(style="thin", color="C5CAE9")
+                    BDR_d  = _BDd(left=THIN_d, right=THIN_d, top=THIN_d, bottom=THIN_d)
+                    CTR_d  = _ALd(horizontal="center", vertical="center")
+                    HDR_d  = _PFd("solid", fgColor="1A237E")
+                    HFNT_d = _FNd(color="FFFFFF", bold=True, size=9)
+                    NFT_d  = _FNd(size=9)
+                    GRD_d  = _PFd("solid", fgColor="E8EAF6")
+                    GFN_d  = _FNd(color="1A237E", bold=True, size=9)
+
+                    dept_fills = {
+                        "ARSAW":     _PFd("solid", fgColor="7986CB"),
+                        "PTR":       _PFd("solid", fgColor="66BB6A"),
+                        "ARStow":    _PFd("solid", fgColor="FFA726"),
+                        "Universal": _PFd("solid", fgColor="EF5350"),
+                    }
+
+                    # Sheet 1: Summary
+                    ws_sum = wb.active
+                    ws_sum.title = "Dept Summary"
+                    sum_hdrs = ["Department","Blocking Andons","Hours Lost","Avg Dwell (min)","Top Andon Type","Unique Stations","Unique Resolvers"]
+                    for ci, h in enumerate(sum_hdrs, 1):
+                        c = ws_sum.cell(row=1, column=ci, value=h)
+                        c.fill=HDR_d; c.font=HFNT_d; c.alignment=CTR_d; c.border=BDR_d
+                    for ri, row in enumerate(dept_summary_rows, 2):
+                        for ci, key in enumerate(sum_hdrs, 1):
+                            cell = ws_sum.cell(row=ri, column=ci, value=row.get(key))
+                            cell.border = BDR_d; cell.alignment = CTR_d
+                            if row["Department"] == "GRAND TOTAL":
+                                cell.fill=GRD_d; cell.font=GFN_d
+                            else:
+                                fill = dept_fills.get(row["Department"])
+                                if fill and ci == 1:
+                                    cell.fill=fill; cell.font=_FNd(color="FFFFFF", bold=True, size=9)
+                                else:
+                                    cell.font=NFT_d
+                    for col_obj in ws_sum.columns:
+                        mx=0; cl=_gcld(col_obj[0].column)
+                        for c in col_obj:
+                            try: mx=max(mx, len(str(c.value or "")))
+                            except: pass
+                        ws_sum.column_dimensions[cl].width = min(mx+3, 35)
+
+                    # One sheet per department
+                    for dept in DEPT_COLORS.keys():
+                        sub = dept_bl_df[dept_bl_df["Department"] == dept].copy()
+                        if sub.empty:
+                            continue
+                        ws_d = wb.create_sheet(dept[:31])
+                        det_cols = ["Time Created","Andon Type","Equipment ID","Resolver","Resolve_Min"]
+                        if "Creator" in sub.columns:      det_cols.insert(3, "Creator")
+                        if "Time Resolved" in sub.columns: det_cols.append("Time Resolved")
+                        if "Zone" in sub.columns:          det_cols.append("Zone")
+                        avail = [c for c in det_cols if c in sub.columns]
+                        disp_names = {c: c for c in avail}
+                        disp_names["Resolve_Min"] = "Dwell (min)"
+                        for ci, col in enumerate(avail, 1):
+                            cell = ws_d.cell(row=1, column=ci, value=disp_names[col])
+                            cell.fill=HDR_d; cell.font=HFNT_d; cell.alignment=CTR_d; cell.border=BDR_d
+                        for ri, (_, row) in enumerate(sub[avail].sort_values("Time Created", ascending=False).iterrows(), 2):
+                            for ci, col in enumerate(avail, 1):
+                                val = row[col]
+                                if col == "Resolve_Min" and not pd.isna(val):
+                                    val = round(float(val), 2)
+                                elif col in ("Time Created","Time Resolved") and not pd.isna(val):
+                                    val = str(val)
+                                cell = ws_d.cell(row=ri, column=ci, value=val)
+                                cell.border=BDR_d; cell.font=NFT_d
+                        for col_obj in ws_d.columns:
+                            mx=0; cl=_gcld(col_obj[0].column)
+                            for c in col_obj:
+                                try: mx=max(mx, len(str(c.value or "")))
+                                except: pass
+                            ws_d.column_dimensions[cl].width = min(mx+3, 32)
+
+                    buf_d = _io_dept.BytesIO()
+                    wb.save(buf_d)
+                    buf_d.seek(0)
+                    return buf_d.getvalue()
+
+                def _build_dept_pdf(dept_bl_df):
+                    try:
+                        from reportlab.lib.pagesizes import A4, landscape
+                        from reportlab.lib import colors as rl_colors
+                        from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle,
+                                                        Paragraph, Spacer, HRFlowable)
+                        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                        from reportlab.lib.units import cm
+
+                        buf_p = _io_dept.BytesIO()
+                        doc = SimpleDocTemplate(buf_p, pagesize=landscape(A4),
+                                                leftMargin=1.5*cm, rightMargin=1.5*cm,
+                                                topMargin=1.5*cm, bottomMargin=1.5*cm)
+                        styles = getSampleStyleSheet()
+                        story_p = []
+
+                        title_style = ParagraphStyle("title", parent=styles["Title"], fontSize=16, textColor=rl_colors.HexColor("#1a237e"))
+                        sub_style   = ParagraphStyle("sub",   parent=styles["Normal"], fontSize=9,  textColor=rl_colors.gray)
+                        h2_style    = ParagraphStyle("h2",    parent=styles["Heading2"], textColor=rl_colors.HexColor("#3949ab"))
+
+                        story_p.append(Paragraph("LCY3 AFM Dashboard — Department Blocking Analysis", title_style))
+                        story_p.append(Paragraph(f"Total blocking andons: {len(dept_bl_df):,} · Hours lost: {dept_bl_df['Resolve_Min'].sum()/60:.2f} hrs", sub_style))
+                        story_p.append(Spacer(1, 12))
+
+                        # Summary table
+                        sum_data = [["Department","Blocking Andons","Hours Lost","Avg Dwell (min)","Unique Stations","Unique Resolvers"]]
+                        for row in dept_summary_rows:
+                            sum_data.append([
+                                row["Department"], f"{row['Blocking Andons']:,}",
+                                f"{row['Hours Lost']:.2f}", f"{row['Avg Dwell (min)']:.2f}",
+                                str(row["Unique Stations"]), str(row["Unique Resolvers"])
+                            ])
+                        sum_tbl = Table(sum_data, colWidths=[3.5*cm,3.5*cm,3*cm,3.5*cm,3.5*cm,3.5*cm])
+                        sum_tbl.setStyle(TableStyle([
+                            ("BACKGROUND", (0,0), (-1,0), rl_colors.HexColor("#1a237e")),
+                            ("TEXTCOLOR",  (0,0), (-1,0), rl_colors.white),
+                            ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
+                            ("ROWBACKGROUNDS", (0,1), (-1,-2), [rl_colors.HexColor("#f5f5f5"), rl_colors.white]),
+                            ("BACKGROUND", (0,-1), (-1,-1), rl_colors.HexColor("#e8eaf6")),
+                            ("FONTNAME",   (0,-1), (-1,-1), "Helvetica-Bold"),
+                            ("GRID", (0,0), (-1,-1), 0.4, rl_colors.HexColor("#c5cae9")),
+                            ("FONTSIZE", (0,0), (-1,-1), 9),
+                            ("PADDING", (0,0), (-1,-1), 5),
+                            ("ALIGN", (0,0), (-1,-1), "CENTER"),
+                        ]))
+                        story_p.append(sum_tbl)
+                        story_p.append(Spacer(1, 16))
+
+                        # Per department detail
+                        for dept in DEPT_COLORS.keys():
+                            sub = dept_bl_df[dept_bl_df["Department"] == dept]
+                            if sub.empty:
+                                continue
+                            story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(DEPT_COLORS[dept])))
+                            story_p.append(Paragraph(f"{dept} — {len(sub):,} blocking andons · {sub['Resolve_Min'].sum()/60:.2f} hrs lost", h2_style))
+                            # Andon type breakdown
+                            type_data = [["Andon Type","Count","Hrs Lost","Avg (min)","% of Dept"]]
+                            for _, row in (sub.groupby("Andon Type")
+                                           .agg(Count=("Resolve_Min","count"), Hrs=("Resolve_Min",lambda x:x.sum()/60), Avg=("Resolve_Min","mean"))
+                                           .reset_index().sort_values("Hrs", ascending=False)).iterrows():
+                                type_data.append([
+                                    str(row["Andon Type"])[:35], str(int(row["Count"])),
+                                    f"{row['Hrs']:.2f}", f"{row['Avg']:.2f}",
+                                    f"{row['Count']/len(sub)*100:.1f}%"
+                                ])
+                            t_tbl = Table(type_data, colWidths=[7*cm,2.5*cm,2.5*cm,2.5*cm,2.5*cm])
+                            t_tbl.setStyle(TableStyle([
+                                ("BACKGROUND", (0,0), (-1,0), rl_colors.HexColor("#3949ab")),
+                                ("TEXTCOLOR",  (0,0), (-1,0), rl_colors.white),
+                                ("FONTNAME",   (0,0), (-1,0), "Helvetica-Bold"),
+                                ("ROWBACKGROUNDS", (0,1), (-1,-1), [rl_colors.HexColor("#f5f5f5"), rl_colors.white]),
+                                ("GRID", (0,0), (-1,-1), 0.3, rl_colors.HexColor("#c5cae9")),
+                                ("FONTSIZE", (0,0), (-1,-1), 8),
+                                ("PADDING", (0,0), (-1,-1), 4),
+                            ]))
+                            story_p.append(t_tbl)
+                            story_p.append(Spacer(1, 10))
+
+                        doc.build(story_p)
+                        buf_p.seek(0)
+                        return buf_p.getvalue()
+                    except ImportError:
+                        return None
+
+                with dl1:
+                    dept_excel = _build_dept_excel(dept_bl)
+                    st.download_button(
+                        "⬇️ Download Dept Blocking (.xlsx)",
+                        dept_excel, "Dept_Blocking_Analysis.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True, key="dept_excel_dl"
+                    )
+                with dl2:
+                    dept_pdf = _build_dept_pdf(dept_bl)
+                    if dept_pdf:
+                        st.download_button(
+                            "⬇️ Download Dept Blocking (.pdf)",
+                            dept_pdf, "Dept_Blocking_Analysis.pdf",
+                            "application/pdf",
+                            use_container_width=True, key="dept_pdf_dl"
+                        )
+                    else:
+                        st.info("💡 Install `reportlab` to enable PDF download.")
+
+    if optional_cols["Equipment ID"]:
+        with tab["Equipment ID Analysis"]:
+            tab_pdf_download("Equipment_ID_Analysis", fdf)
+            st.markdown('<div class="sec-title">Count of Problem Id by Equipment ID and Week Number</div>', unsafe_allow_html=True)
+            eid_weeks = sorted(fdf["Week"].dropna().unique(), reverse=True)
+            eid_count_p = fdf.pivot_table(index="Equipment ID", columns="Week",
+                                          values="Resolve_Min", aggfunc="count", fill_value=0)
+            eid_cols = {}
+            for w in eid_weeks:
+                if w in eid_count_p.columns:
+                    eid_cols[f"Wk {w}"] = eid_count_p[w].astype(int)
+            eid_cols["Total"] = eid_count_p[eid_weeks].sum(axis=1).astype(int)
+            eid_tbl = pd.DataFrame(eid_cols).sort_values("Total", ascending=False)
+            eid_tbl.index.name = "Equipment ID"
+            eid_grand = {f"Wk {w}": int(fdf[fdf["Week"] == w]["Resolve_Min"].count()) for w in eid_weeks if w in eid_count_p.columns}
+            eid_grand["Total"] = int(fdf["Resolve_Min"].count())
+            eid_grand_row = pd.DataFrame(eid_grand, index=["Grand Total"])
+            # Grand Total at BOTTOM
+            eid_tbl = pd.concat([eid_tbl, eid_grand_row])
+
+            def _style_eid(data):
+                s = pd.DataFrame("", index=data.index, columns=data.columns)
+                if "Grand Total" in data.index:
+                    s.loc["Grand Total"] = "font-weight:700; background-color:#e8eaf6; color:#1a237e"
+                return s
+
+            st.dataframe(eid_tbl.style.apply(_style_eid, axis=None).format("{:,.0f}", na_rep="—"),
+                         use_container_width=True, height=420)
+            c1, c2 = st.columns(2)
+            with c1:
+                top20_eid = (fdf.groupby("Equipment ID")["Resolve_Min"].count()
+                             .nlargest(20).reset_index().rename(columns={"Resolve_Min": "Count"}))
+                fig_eid_pie = px.pie(top20_eid, names="Equipment ID", values="Count",
+                                    title="Top 20 Equipment IDs by Andon Count",
+                                    color_discrete_sequence=px.colors.qualitative.Alphabet)
+                fig_eid_pie.update_traces(textinfo="percent+label", textposition="inside")
+                fig_eid_pie.update_layout(height=450, showlegend=False, margin=dict(t=50, b=10, l=0, r=0))
+                st.plotly_chart(fig_eid_pie, use_container_width=True)
+            with c2:
+                top20_avg = (fdf.groupby("Equipment ID")["Resolve_Min"].agg(["count", "mean"])
+                             .reset_index().nlargest(20, "count")
+                             .rename(columns={"count": "Andons", "mean": "Avg Time (min)"}))
+                fig_eid_bar = px.bar(top20_avg.sort_values("Avg Time (min)", ascending=True),
+                                     x="Avg Time (min)", y="Equipment ID", orientation="h",
+                                     color="Avg Time (min)", color_continuous_scale="Blues",
+                                     text=top20_avg.sort_values("Avg Time (min)")["Avg Time (min)"].round(2),
+                                     title="Avg Dwell Time — Top 20 Equipment IDs")
+                fig_eid_bar.update_traces(textposition="outside")
+                fig_eid_bar.update_layout(coloraxis_showscale=False, height=450,
+                                          yaxis_title="", xaxis_title="Avg Dwell Time (min)",
+                                          margin=dict(t=50, b=10, l=0, r=0))
+                st.plotly_chart(fig_eid_bar, use_container_width=True)
 
     # ── Tab: Hourly Trend ─────────────────────────────────────────────────────
     with tab["Hourly Trend"]:
@@ -2550,48 +2905,11 @@ if _all_parts or uploaded_files:
     with tab["Raw Data"]:
         tab_pdf_download("Raw_Data", fdf)
         st.markdown('<div class="sec-title">Raw Resolved Andon Records</div>', unsafe_allow_html=True)
-
-        # ── Column filters ─────────────────────────────────────────────────────
-        with st.expander("🔽 Column Filters", expanded=False):
-            rf_cols = st.columns(3)
-            raw_fdf = fdf.copy()
-
-            with rf_cols[0]:
-                if "Andon Type" in raw_fdf.columns:
-                    sel_raw_andon = st.multiselect("Andon Type", sorted(raw_fdf["Andon Type"].dropna().unique()), default=[], key="raw_andon")
-                    if sel_raw_andon: raw_fdf = raw_fdf[raw_fdf["Andon Type"].isin(sel_raw_andon)]
-                if "Resolver" in raw_fdf.columns:
-                    sel_raw_res = st.multiselect("Resolver", sorted(raw_fdf["Resolver"].dropna().unique()), default=[], key="raw_resolver")
-                    if sel_raw_res: raw_fdf = raw_fdf[raw_fdf["Resolver"].isin(sel_raw_res)]
-
-            with rf_cols[1]:
-                if "Blocking" in raw_fdf.columns:
-                    sel_raw_bl = st.multiselect("Blocking", sorted(raw_fdf["Blocking"].dropna().astype(str).unique()), default=[], key="raw_blocking")
-                    if sel_raw_bl: raw_fdf = raw_fdf[raw_fdf["Blocking"].astype(str).isin(sel_raw_bl)]
-                if "Equipment ID" in raw_fdf.columns:
-                    sel_raw_eid = st.multiselect("Equipment ID", sorted(raw_fdf["Equipment ID"].dropna().astype(str).unique()), default=[], key="raw_eid")
-                    if sel_raw_eid: raw_fdf = raw_fdf[raw_fdf["Equipment ID"].astype(str).isin(sel_raw_eid)]
-
-            with rf_cols[2]:
-                if "Zone" in raw_fdf.columns:
-                    sel_raw_zone = st.multiselect("Zone", sorted(raw_fdf["Zone"].dropna().unique()), default=[], key="raw_zone")
-                    if sel_raw_zone: raw_fdf = raw_fdf[raw_fdf["Zone"].isin(sel_raw_zone)]
-                if "Shift" in raw_fdf.columns:
-                    sel_raw_shift = st.multiselect("Shift", sorted(raw_fdf["Shift"].dropna().unique()), default=[], key="raw_shift")
-                    if sel_raw_shift: raw_fdf = raw_fdf[raw_fdf["Shift"].isin(sel_raw_shift)]
-
-            # Min/max dwell time filter
-            dwell_min_val = float(raw_fdf["Resolve_Min"].min()) if not raw_fdf.empty else 0.0
-            dwell_max_val = float(raw_fdf["Resolve_Min"].max()) if not raw_fdf.empty else 60.0
-            dwell_range = st.slider("Dwell Time range (min)", min_value=dwell_min_val, max_value=max(dwell_max_val, dwell_min_val+0.1),
-                                    value=(dwell_min_val, dwell_max_val), step=0.5, key="raw_dwell_range")
-            raw_fdf = raw_fdf[(raw_fdf["Resolve_Min"] >= dwell_range[0]) & (raw_fdf["Resolve_Min"] <= dwell_range[1])]
-
-        st.markdown(f"**{len(raw_fdf):,}** records · from **{len(uploaded_files)}** file(s)" + (f" · filtered from {len(fdf):,}" if len(raw_fdf) != len(fdf) else ""))
-        st.dataframe(raw_fdf, use_container_width=True, height=500)
+        st.markdown(f"**{len(fdf):,}** records matching current filters · from **{len(uploaded_files)}** file(s)")
+        st.dataframe(fdf, use_container_width=True, height=500)
         dl1, dl2 = st.columns(2)
         with dl1:
-            csv = raw_fdf.to_csv(index=False).encode("utf-8")
+            csv = fdf.to_csv(index=False).encode("utf-8")
             st.download_button("⬇️ Download as CSV", csv, "andon_filtered.csv", "text/csv", use_container_width=True)
         with dl2:
             import io
@@ -2790,7 +3108,7 @@ else:
             <div style="background:{"rgba(57,73,171,0.08)" if DM else "rgba(57,73,171,0.04)"}; border:1px solid {"rgba(121,134,203,0.15)" if DM else "rgba(57,73,171,0.1)"};
                          border-radius:10px; padding:0.7rem 1.5rem; font-size:0.82rem; color:{"#8892b0" if DM else "#777"}; text-align:left;">
                 <div style="font-weight:700; color:{"#5c6bc0" if DM else "#5c6bc0"}; margin-bottom:4px;">⚡ Optional columns (unlock more tabs)</div>
-                Equipment Type &nbsp;·&nbsp; Zone &nbsp;·&nbsp; Shift &nbsp;·&nbsp; Blocking &nbsp;·&nbsp; Equipment ID
+                Equipment Type &nbsp;·&nbsp; Zone &nbsp;·&nbsp; Shift &nbsp;·&nbsp; Blocking &nbsp;·&nbsp; Equipment ID &nbsp;·&nbsp; Creator &nbsp;·&nbsp; Time Resolved
             </div>
         </div>
     </div>
