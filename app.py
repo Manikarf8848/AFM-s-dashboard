@@ -148,25 +148,33 @@ st.markdown(f"""
 /* ── Scrollable tabs ── */
 div[data-testid="stTabs"] > div:first-child {{
     overflow-x: auto !important;
-    overflow-y: hidden !important;
+    overflow-y: visible !important;
     flex-wrap: nowrap !important;
     display: flex !important;
-    scrollbar-width: thin !important;
-    scrollbar-color: {_accent} transparent !important;
-    padding-bottom: 2px;
+    scrollbar-width: auto !important;
+    scrollbar-color: {_accent} rgba(100,100,100,0.2) !important;
+    padding-bottom: 12px !important;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     gap: 2px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid rgba(100,100,100,0.1);
 }}
 div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar {{
-    height: 4px;
+    height: 12px !important;
 }}
 div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-track {{
-    background: transparent;
+    background: rgba(100,100,100,0.1);
+    border-radius: 10px;
 }}
 div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-thumb {{
     background: {_accent};
     border-radius: 10px;
+    border: 2px solid rgba(100,100,100,0.1);
+}}
+div[data-testid="stTabs"] > div:first-child::-webkit-scrollbar-thumb:hover {{
+    background: {_accent};
+    opacity: 0.9;
 }}
 div[data-testid="stTabs"] button {{
     font-weight: 600; font-size: 0.83rem;
