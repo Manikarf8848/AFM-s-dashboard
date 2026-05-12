@@ -2811,8 +2811,7 @@ if _all_parts or uploaded_files:
                             if sub.empty:
                                 continue
                             hex_color = DEPT_COLORS[dept]
-                            hex_color_clean = hex_color[1:] if hex_color.startswith("#") else hex_color
-                            story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(hex_color_clean)))
+                            story_p.append(HRFlowable(width="100%", thickness=2, color=rl_colors.HexColor(hex_color)))
                             story_p.append(Paragraph(f"{dept} — {len(sub):,} blocking andons · {sub['Resolve_Min'].sum()/60:.2f} hrs lost", h2_style))
                             # Andon type breakdown
                             type_data = [["Andon Type","Count","Hrs Lost","Avg (min)","% of Dept"]]
